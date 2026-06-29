@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>AMEVA Multi-Session Launcher</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Top Dashboard Header -->
+    <header class="dashboard-header">
+      <div class="brand">
+        <button id="btn-settings-toggle" class="settings-toggle-btn" title="설정 패널 접기/열기">⚙️</button>
+        <span class="logo">👾 AMEVA</span>
+        <span class="badge">Launcher v3</span>
+      </div>
+
+      <!-- Master Control Address Bar -->
+      <div class="address-container">
+        <input type="text" id="master-url" placeholder="이동할 URL 입력 후 Enter 또는 Go 클릭 (기본: https://google.com)" value="https://google.com">
+        <button id="btn-go" class="go-btn" title="모든 활성 브라우저를 입력한 URL로 이동">Go (Sync)</button>
+        <button id="btn-reload" class="nav-btn" title="모든 활성 브라우저 새로고침">🔄 Reload All</button>
+      </div>
+
+      <div class="quick-bookmarks">
+        <span class="bookmark-label">Quick:</span>
+        <button class="bookmark-btn" data-url="https://google.com">Google</button>
+        <button class="bookmark-btn" data-url="https://youtube.com">YouTube</button>
+        <button class="bookmark-btn" data-url="https://naver.com">Naver</button>
+        <button class="bookmark-btn" data-url="https://whoer.net">Whoer (IP Check)</button>
+      </div>
+    </header>
+
+    <!-- Main Workspace Split -->
+    <div class="main-content">
+      <!-- Left Collapsible Control Panel -->
+      <aside id="control-panel" class="control-panel">
+        <!-- Configuration Card -->
+        <div class="config-card">
+          <h3>⚙️ Global Settings</h3>
+          
+          <!-- Visual Theme Selector -->
+          <div class="setting-item">
+            <span class="label">Visual Theme (테마)</span>
+            <select id="theme-select" class="card-select">
+              <option value="dark">Dark Cyber (기본)</option>
+              <option value="green">Matrix Green (해커)</option>
+              <option value="transparent">Aero Glass (투명)</option>
+            </select>
+          </div>
+
+          <!-- Execution Mode Toggle -->
+          <div class="setting-item">
+            <span class="label">Execution Mode (실행 모드)</span>
+            <div class="toggle-group">
+              <input type="radio" id="mode-onboard" name="execution-mode" value="onboard">
+              <label for="mode-onboard">On-board (앱 내부)</label>
+              <input type="radio" id="mode-external" name="execution-mode" value="external" checked>
+              <label for="mode-external">External (새창)</label>
+            </div>
+          </div>
+
+          <!-- Browser Type (Only applies to External Mode) -->
+          <div class="setting-item" id="browser-type-container">
+            <span class="label">Browser Type (외부 창 전용)</span>
+            <div class="toggle-group">
+              <input type="radio" id="browser-edge" name="browser-type" value="edge" checked>
+              <label for="browser-edge">Edge</label>
+              <input type="radio" id="browser-chrome" name="browser-type" value="chrome">
+              <label for="browser-chrome">Chrome</label>
+            </div>
+          </div>
+
+          <!-- Zoom Factor -->
+          <div class="setting-item">
+            <span class="label">Zoom Scale (배율)</span>
+            <input type="number" id="zoom-scale" min="0.5" max="2.0" step="0.1" value="0.8" class="num-input">
+          </div>
+
+          <!-- Sync Toggles -->
+          <div class="setting-item checkbox-item">
+            <input type="checkbox" id="sync-input" checked>
+            <label for="sync-input">🖱️ Scroll & Click 동기화 (실험실)</label>
+          </div>
+
+          <!-- Host-Slave Sync Mode Toggle -->
+          <div class="setting-item checkbox-item">
+            <input type="checkbox" id="host-slave-mode">
+            <label for="host-slave-mode">🔗 Host-Slave 모드 활성화</label>
+          </div>
+
+          <!-- Host Session Select -->
+          <div class="setting-item" id="host-select-container" style="display: none; margin-left: 12px; border-left: 2px solid var(--accent-purple); padding-left: 10px;">
+            <span class="label">Host Session (숙주 세션)</span>
+            <select id="host-session-select" class="card-select">
+              <option value="1">Session 1</option>
+              <option value="2">Session 2</option>
+              <option value="3">Session 3</option>
+              <option value="4">Session 4</option>
+              <option value="5">Session 5</option>
+              <option value="6">Session 6</option>
+            </select>
+          </div>
+
+          <!-- Anti-Fingerprint -->
+          <div class="setting-item checkbox-item">
+            <input type="checkbox" id="anti-fingerprint" checked>
+            <label for="anti-fingerprint">🛡️ Anti-Fingerprint (지문 위장)</label>
+          </div>
+
+          <!-- Human Jitter -->
+          <div class="setting-item checkbox-item">
+            <input type="checkbox" id="human-jitter" checked>
+            <label for="human-jitter">🧠 Human Jitter (인간 동작 모사)</label>
+          </div>
+
+          <!-- Stealth Mode -->
+          <div class="setting-item checkbox-item" id="stealth-mode-container">
+            <input type="checkbox" id="stealth-mode">
+            <label for="stealth-mode">👻 Stealth Mode (화면 은폐 실행)</label>
+          </div>
+
+          <!-- Mute Audio -->
+          <div class="setting-item checkbox-item">
+            <input type="checkbox" id="mute-audio">
+            <label for="mute-audio">🔇 Mute Audio (음소거 실행)</label>
+          </div>
+        </div>
+
+        <!-- Grid Layout Card -->
+        <div class="config-card">
+          <h3>📐 Desktop Grid Layout</h3>
+          
+          <div class="layout-btn-group">
+            <button class="layout-btn" data-layout="1x1">1x1 (1개)</button>
+            <button class="layout-btn" data-layout="1x2">1x2 (2개)</button>
+            <button class="layout-btn active" data-layout="2x2">2x2 (4개)</button>
+            <button class="layout-btn" data-layout="3x2">3x2 (6개)</button>
+          </div>
+
+          <!-- Custom Layout -->
+          <div class="custom-layout-fields">
+            <span class="label">Custom:</span>
+            <input type="number" id="custom-cols" min="1" max="4" value="2" class="num-input" placeholder="열">
+            <span>x</span>
+            <input type="number" id="custom-rows" min="1" max="3" value="2" class="num-input" placeholder="행">
+          </div>
+
+          <div class="launcher-actions">
+            <button id="btn-launch-grid" class="primary-btn">🚀 Launch Browser Grid</button>
+            <button id="btn-realign-grid" class="secondary-btn">🎯 Re-align Grid</button>
+            <button id="btn-close-all" class="danger-btn">🛑 Close All Windows</button>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Right Dashboard & Webview Space -->
+      <section class="sessions-dashboard">
+        <h3 id="dashboard-title">👥 Multi-Session Accounts (최대 6개 세션)</h3>
+        
+        <!-- Dashboard List (External Mode) -->
+        <div id="session-cards-container" class="session-cards-container">
+          <!-- Session Cards will be dynamically injected by renderer.js -->
+        </div>
+
+        <!-- Embedded Webview Grid (On-board Mode) -->
+        <div id="embedded-grid-container" class="layout-2x2" style="display: none;">
+          <!-- Webviews will be dynamically injected here by renderer.js -->
+        </div>
+      </section>
+    </div>
+
+    <!-- Status Bar / Footer -->
+    <footer class="status-bar">
+      <div id="status-text">Ready</div>
+      <div class="footer-actions">
+        <button id="btn-reset-profiles" class="danger-link-btn" title="모든 프로필 캐시/쿠키를 완전히 삭제하고 초기화합니다.">Reset All Profiles</button>
+      </div>
+    </footer>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>
+
+
