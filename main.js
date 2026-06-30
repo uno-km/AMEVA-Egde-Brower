@@ -1,4 +1,6 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, session } = require('electron');
+app.commandLine.appendSwitch('dns-over-https-templates', 'https://chrome.cloudflare-dns.com/dns-query');
+app.commandLine.appendSwitch('disable-webrtc-multiple-routes');
 const path = require('path');
 const http = require('http');
 
@@ -148,6 +150,56 @@ app.whenReady().then(() => {
       createWindow();
     }
   });
+});
+
+// OAuth / login popup URL patterns — must be allowed as real BrowserWindows
+const OAUTH_URL_PATTERNS = [
+  /accounts\.google\.com/i,
+  /oauth2\.googleapis\.com/i,
+  /nid\.naver\.com/i,
+  /auth\.kakao\.com/i,
+  /facebook\.com\/dialog\/oauth/i,
+  /login\.microsoftonline\.com/i,
+  /appleid\.apple\.com/i,
+  /github\.com\/login\/oauth/i,
+  /api\.twitter\.com\/oauth/i,
+  /\/oauth/i,
+  /\/auth\/callback/i,
+  /\/login\?/i
+];
+
+app.on('web-contents-created', (event, contents) => {
+  if (contents.getType() === 'webview') {
+    contents.setWindowOpenHandler((details) => {
+      const url = details.url;
+      const isOAuth = OAUTH_URL_PATTERNS.some(p => p.test(url));
+
+      if (isOAuth) {
+        // Create a real isolated popup window that preserves window.opener semantics
+        // Share the same session partition as the parent webview so cookies carry over
+        const parentPartition = contents.session.persist ? contents.session : null;
+        const popup = new BrowserWindow({
+          width: 500,
+          height: 700,
+          title: 'Login',
+          webPreferences: {
+            nodeIntegration: false,
+            contextIsolation: true,
+            // Use the webview's own session so auth cookies are shared
+            session: parentPartition || session.defaultSession
+          }
+        });
+        popup.loadURL(url);
+        // Do NOT return deny — we handle it via BrowserWindow above
+        // Returning deny prevents the original window.open from creating a second window
+        return { action: 'deny' };
+      }
+
+      // Non-OAuth popup: load inside the same webview frame
+      contents.loadURL(url);
+      return { action: 'deny' };
+    });
+  }
 });
 
 app.on('window-all-closed', () => {

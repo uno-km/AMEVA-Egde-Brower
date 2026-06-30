@@ -131,19 +131,19 @@ function getBrowserPath(browserType) {
 }
 
 // Generate the preload script for webviews dynamically
-function generatePreloadScript() {
-  const preloadPath = path.join(__dirname, 'preload-dynamic.js');
+function generatePreloadScript(sessionId, isHost, isSlave) {
+  const profilesDir = path.join(__dirname, 'profiles');
+  if (!fs.existsSync(profilesDir)) {
+    fs.mkdirSync(profilesDir, { recursive: true });
+  }
+  const preloadPath = path.join(profilesDir, `preload-session-${sessionId}.js`);
   const preloadJsCode = `
 (function() {
-  const ua = navigator.userAgent;
-  const matchSession = ua.match(/AMEVA_SESSION_(\\d+)/);
-  if (!matchSession) return;
-  
-  const sessionId = parseInt(matchSession[1]);
-  const isHost = ua.includes('AMEVA_HOST');
-  const antiFingerprint = ua.includes('AMEVA_ANTIFP');
-  const humanJitter = ua.includes('AMEVA_JITTER');
-  const isSlave = ua.includes('AMEVA_SLAVE');
+  const sessionId = ${sessionId};
+  const isHost = ${isHost};
+  const isSlave = ${isSlave};
+  const antiFingerprint = ${globalSettings.antiFingerprint};
+  const humanJitter = ${globalSettings.humanJitter};
   
   console.log('[AMEVA Preload] Session ' + sessionId + ' preloaded. Host: ' + isHost + ', AntiFP: ' + antiFingerprint + ', Jitter: ' + humanJitter + ', Slave: ' + isSlave);
 
@@ -156,11 +156,48 @@ function generatePreloadScript() {
         
         Object.defineProperty(navigator, 'hardwareConcurrency', { get: () => randomConcurrency });
         Object.defineProperty(navigator, 'deviceMemory', { get: () => randomMemory });
-        
+        Object.defineProperty(navigator, 'webdriver', { get: () => false });
+
+        // Spoof userAgentData for Client Hints compatibility
+        if (navigator.userAgentData) {
+          const mockUserAgentData = {
+            brands: [
+              { brand: 'Not_A Brand', version: '8' },
+              { brand: 'Chromium', version: '120' },
+              { brand: 'Google Chrome', version: '120' }
+            ],
+            mobile: false,
+            platform: 'Windows',
+            getHighEntropyValues: function(hints) {
+              return Promise.resolve({
+                brands: this.brands,
+                mobile: this.mobile,
+                platform: this.platform,
+                platformVersion: '10.0.0',
+                architecture: 'x86',
+                bitness: '64',
+                model: ''
+              });
+            }
+          };
+          Object.defineProperty(navigator, 'userAgentData', { get: () => mockUserAgentData });
+        }
+
+        // Mock window.chrome if missing
+        if (!window.chrome) {
+          window.chrome = {
+            runtime: {},
+            loadTimes: function() {},
+            csi: function() {}
+          };
+        }
+
+        // Canvas Spoofing (getImageData) + WebGL canvas tracking
         const originalGetContext = HTMLCanvasElement.prototype.getContext;
         HTMLCanvasElement.prototype.getContext = function(type, contextAttributes) {
           const ctx = originalGetContext.apply(this, arguments);
           if (type === '2d' && ctx) {
+            this.__ctx2d = ctx; // store for toDataURL/toBlob
             const originalGetImageData = ctx.getImageData;
             ctx.getImageData = function(sx, sy, sw, sh) {
               const imageData = originalGetImageData.apply(this, arguments);
@@ -171,13 +208,42 @@ function generatePreloadScript() {
               }
               return imageData;
             };
+          } else if (type === 'webgl' || type === 'webgl2' || type === 'experimental-webgl') {
+            this._webgl = true; // mark as WebGL to prevent 2D context collision
           }
           return ctx;
         };
 
-        if (typeof WebGLRenderingContext !== 'undefined') {
-          const originalGetParameter = WebGLRenderingContext.prototype.getParameter;
-          WebGLRenderingContext.prototype.getParameter = function(parameter) {
+        // Canvas Image Export (toDataURL / toBlob) — WebGL-safe spoofing
+        // We track whether a canvas is WebGL by intercepting getContext.
+        // If it is a WebGL canvas, we never call getContext('2d') to avoid context collision errors.
+        const _origToDataURL = HTMLCanvasElement.prototype.toDataURL;
+        HTMLCanvasElement.prototype.toDataURL = function() {
+          const ctx2 = this.__ctx2d || null;
+          if (ctx2 && !this._webgl) {
+            const s = ctx2.fillStyle;
+            ctx2.fillStyle = 'rgba(' + (\${sessionId} % 3) + ',' + (\${sessionId} % 2) + ',0,0.004)';
+            ctx2.fillRect(0, 0, 1, 1);
+            ctx2.fillStyle = s;
+          }
+          return _origToDataURL.apply(this, arguments);
+        };
+        const _origToBlob = HTMLCanvasElement.prototype.toBlob;
+        HTMLCanvasElement.prototype.toBlob = function(cb, ...a) {
+          const ctx2 = this.__ctx2d || null;
+          if (ctx2 && !this._webgl) {
+            const s = ctx2.fillStyle;
+            ctx2.fillStyle = 'rgba(' + (\${sessionId} % 3) + ',' + (\${sessionId} % 2) + ',0,0.004)';
+            ctx2.fillRect(0, 0, 1, 1);
+            ctx2.fillStyle = s;
+          }
+          return _origToBlob.apply(this, [cb, ...a]);
+        };
+
+        // WebGL1 and WebGL2 Spoofing
+        const spoofWebGL = (proto) => {
+          const originalGetParameter = proto.getParameter;
+          proto.getParameter = function(parameter) {
             if (parameter === 37446) {
               return "ANGLE (NVIDIA, NVIDIA GeForce RTX 30" + (60 + \${sessionId} * 5) + " Ti Direct3D11 vs_5_0 ps_5_0)";
             }
@@ -185,7 +251,13 @@ function generatePreloadScript() {
               return "Google Inc. (NVIDIA)";
             }
             return originalGetParameter.apply(this, arguments);
-          }
+          };
+        };
+        if (typeof WebGLRenderingContext !== 'undefined') {
+          spoofWebGL(WebGLRenderingContext.prototype);
+        }
+        if (typeof WebGL2RenderingContext !== 'undefined') {
+          spoofWebGL(WebGL2RenderingContext.prototype);
         }
         console.log('[AMEVA Sync] Preload Anti-Fingerprint Active.');
       \`;
@@ -203,6 +275,7 @@ function generatePreloadScript() {
   let scrollTimeout;
 
   const sse = new EventSource('http://127.0.0.1:8080/events?session=' + sessionId);
+  window.__ameva_sse = sse; // expose for cleanup on webview close
 
   sse.onmessage = function(event) {
     try {
@@ -226,35 +299,6 @@ function generatePreloadScript() {
         scrollTimeout = setTimeout(function() {
           isRemoteScroll = false;
         }, humanJitter ? 800 : 150);
-      } else if (data.type === 'click') {
-        if (isHost) return;
-        const triggerClick = function() {
-          const jitterX = humanJitter ? (Math.random() - 0.5) * 10 : 0;
-          const jitterY = humanJitter ? (Math.random() - 0.5) * 10 : 0;
-          
-          const clientX = data.x * window.innerWidth + jitterX;
-          const clientY = data.y * window.innerHeight + jitterY;
-          const elem = document.elementFromPoint(clientX, clientY);
-          if (elem) {
-            const clickEvent = new MouseEvent('click', {
-              view: window,
-              bubbles: true,
-              cancelable: true,
-              clientX: clientX,
-              clientY: clientY
-            });
-            elem.dispatchEvent(clickEvent);
-            if (typeof elem.focus === 'function') {
-              elem.focus();
-            }
-          }
-        };
-
-        if (humanJitter) {
-          setTimeout(triggerClick, 50 + Math.random() * 200);
-        } else {
-          triggerClick();
-        }
       } else if (data.type === 'keydown') {
         if (isHost) return;
         const triggerKey = function() {
@@ -328,8 +372,8 @@ function generatePreloadScript() {
     }
   };
 
-  // Broadcast local events unconditionally (filtering is done on server side)
-  const shouldBroadcast = true;
+  // Broadcast local events only if this session is the Host (or if host-slave mode is disabled)
+  const shouldBroadcast = !isSlave;
 
   if (shouldBroadcast) {
     window.addEventListener('scroll', function() {
@@ -481,18 +525,65 @@ function prepareExtension(sessionId) {
         return ctx;
       };
 
-      // 3. WebGL Vendor/Renderer Spoofing
-      if (typeof WebGLRenderingContext !== 'undefined') {
-        const originalGetParameter = WebGLRenderingContext.prototype.getParameter;
-        WebGLRenderingContext.prototype.getParameter = function(parameter) {
-          if (parameter === 37446) { // UNMASKED_RENDERER_WEBGL
-            return "ANGLE (NVIDIA, NVIDIA GeForce RTX 30" + (60 + ${sessionId} * 5) + " Ti Direct3D11 vs_5_0 ps_5_0)";
-          }
-          if (parameter === 37445) { // UNMASKED_VENDOR_WEBGL
-            return "Google Inc. (NVIDIA)";
-          }
-          return originalGetParameter.apply(this, arguments);
+      // Canvas toDataURL / toBlob spoofing — safe: checks context type before drawing
+      const _origToDataURL = HTMLCanvasElement.prototype.toDataURL;
+      HTMLCanvasElement.prototype.toDataURL = function() {
+        const existingCtx = this.__ctx2d || null;
+        // Only inject noise if already a 2D canvas — do NOT call getContext('2d') on WebGL canvas
+        const ctx2 = existingCtx || (this.getContext ? (() => { try { return this.getContext('2d'); } catch(e) { return null; } })() : null);
+        if (ctx2 && !this._webgl) {
+          const s = ctx2.fillStyle;
+          ctx2.fillStyle = 'rgba(' + (${sessionId} % 3) + ',' + (${sessionId} % 2) + ',0,0.004)';
+          ctx2.fillRect(0, 0, 1, 1);
+          ctx2.fillStyle = s;
         }
+        return _origToDataURL.apply(this, arguments);
+      };
+
+      // Mark WebGL canvases so toDataURL doesn't attempt 2D context collision
+      const _origGetContext = HTMLCanvasElement.prototype.getContext;
+      HTMLCanvasElement.prototype.getContext = function(type) {
+        const ctx = _origGetContext.apply(this, arguments);
+        if (type === 'webgl' || type === 'webgl2' || type === 'experimental-webgl') {
+          this._webgl = true;
+        } else if (type === '2d') {
+          this.__ctx2d = ctx;
+        }
+        return ctx;
+      };
+
+      // 3. WebGL 1.0 and 2.0 Vendor/Renderer Spoofing
+      const _spoofWebGL = (proto) => {
+        const _orig = proto.getParameter;
+        proto.getParameter = function(parameter) {
+          if (parameter === 37446) return 'ANGLE (NVIDIA, NVIDIA GeForce RTX 30' + (60 + ${sessionId} * 5) + ' Ti Direct3D11 vs_5_0 ps_5_0)';
+          if (parameter === 37445) return 'Google Inc. (NVIDIA)';
+          return _orig.apply(this, arguments);
+        };
+      };
+      if (typeof WebGLRenderingContext !== 'undefined') _spoofWebGL(WebGLRenderingContext.prototype);
+      if (typeof WebGL2RenderingContext !== 'undefined') _spoofWebGL(WebGL2RenderingContext.prototype);
+
+      // 4. navigator.webdriver = false, Client Hints, chrome runtime
+      Object.defineProperty(navigator, 'webdriver', { get: () => false, configurable: true });
+      if (navigator.userAgentData) {
+        const _uad = {
+          brands: [
+            { brand: 'Not_A Brand', version: '8' },
+            { brand: 'Chromium', version: '120' },
+            { brand: 'Google Chrome', version: '120' }
+          ],
+          mobile: false,
+          platform: 'Windows',
+          getHighEntropyValues: function() {
+            return Promise.resolve({ brands: this.brands, mobile: false, platform: 'Windows',
+              platformVersion: '10.0.0', architecture: 'x86', bitness: '64', model: '' });
+          }
+        };
+        Object.defineProperty(navigator, 'userAgentData', { get: () => _uad, configurable: true });
+      }
+      if (!window.chrome) {
+        window.chrome = { runtime: {}, loadTimes: function(){}, csi: function(){} };
       }
       console.log('[AMEVA Sync] Anti-Fingerprint Active on page context.');
     `;
@@ -874,6 +965,32 @@ function initSyncServerConnection() {
           sessionStates[id].lastKnownUrl = data.url;
           saveSessionStates();
         }
+      } else if (data.type === 'click') {
+        // Native input click simulation in Slaves
+        const hostId = parseInt(globalSettings.hostSession);
+        if (globalSettings.hostSlaveMode && parseInt(data.sender) === hostId) {
+          for (let i = 1; i <= MAX_SESSIONS; i++) {
+            if (i !== hostId && activeWebviews[i]) {
+              const webview = activeWebviews[i];
+              try {
+                const rect = webview.getBoundingClientRect();
+                // Correct coordinates for zoom factor: sendInputEvent uses physical device pixels,
+                // not CSS pixels. Must divide by zoomFactor to align with internal layout coords.
+                const zoomFactor = sessionZoomStates[i] || 1.0;
+                const rawX = data.x * rect.width;
+                const rawY = data.y * rect.height;
+                const x = Math.round(rawX / zoomFactor);
+                const y = Math.round(rawY / zoomFactor);
+                
+                // Dispatch native OS-level click events
+                webview.sendInputEvent({ type: 'mouseDown', x, y, button: 'left', clickCount: 1 });
+                webview.sendInputEvent({ type: 'mouseUp', x, y, button: 'left', clickCount: 1 });
+              } catch (e) {
+                console.error('[Native Click Error]', e);
+              }
+            }
+          }
+        }
       }
     } catch (err) {
       console.error('[SSE Server Link Error]', err);
@@ -933,7 +1050,9 @@ function launchBrowserWindow(sessionId, x, y, w, h, url) {
     `--window-position=${globalSettings.stealthMode ? '9999,9999' : `${x},${y}`}`,
     `--window-size=${w},${h}`,
     '--no-first-run',
-    '--no-default-browser-check'
+    '--no-default-browser-check',
+    '--disable-webrtc-multiple-routes',
+    '--dns-over-https-templates=https://chrome.cloudflare-dns.com/dns-query'
   ];
 
   if (browserType === 'edge') {
@@ -1054,10 +1173,14 @@ function launchEmbeddedWebview(sessionId, url) {
           <span class="zoom-text" id="zoom-text-${sessionId}">${initialZoomPercent}%</span>
           <button class="zoom-btn" id="btn-zoom-in-${sessionId}" title="Zoom In">+</button>
         </div>
+        <div class="nav-controls" style="display: flex; gap: 4px; margin-right: 4px;">
+          <button class="small-btn webview-back-btn" id="btn-webview-back-${sessionId}" style="padding: 2px 6px;" title="Go Back">◀</button>
+          <button class="small-btn webview-forward-btn" id="btn-webview-forward-${sessionId}" style="padding: 2px 6px;" title="Go Forward">▶</button>
+        </div>
         <button class="small-btn webview-reload-btn" id="btn-webview-reload-${sessionId}" style="padding: 2px 6px;">🔄</button>
       </div>
     </div>
-    <webview id="webview-${sessionId}" partition="session-profile-${sessionId}"></webview>
+    <webview id="webview-${sessionId}" partition="session-profile-${sessionId}" allowpopups></webview>
   `;
 
   embeddedGridContainer.appendChild(webviewCell);
@@ -1065,22 +1188,23 @@ function launchEmbeddedWebview(sessionId, url) {
   const webview = webviewCell.querySelector('webview');
   activeWebviews[sessionId] = webview;
 
-  // Set Preload script path
-  const preloadPath = generatePreloadScript();
+  // Set WebRTC IP handling policy to prevent local/public IP leaks via WebRTC when using proxies
+  try {
+    const { session } = require('electron');
+    const partitionSession = session.fromPartition(`session-profile-${sessionId}`);
+    partitionSession.setWebRTCIPHandlingPolicy('disable_non_proxied_udp');
+  } catch (err) {
+    console.error('Failed to set WebRTC IP policy:', err);
+  }
+
+  // Set Preload script path (dynamically generated per-session)
+  const preloadPath = generatePreloadScript(sessionId, isHost, isSlave);
   webview.setAttribute('preload', 'file://' + preloadPath);
 
-  // Set custom user-agent containing session flags
+  // Set clean standard user-agent to prevent Google from blocking login/unsupported warning
   const uaKey = sessionStates[sessionId].userAgent;
   let baseUA = USER_AGENTS[uaKey] || BASE_DEFAULT_UA;
-  
-  // Inject tags to User-Agent
-  let customUA = `${baseUA} AMEVA_SESSION_${sessionId}`;
-  if (isHost) customUA += ' AMEVA_HOST';
-  if (isSlave) customUA += ' AMEVA_SLAVE';
-  if (globalSettings.antiFingerprint) customUA += ' AMEVA_ANTIFP';
-  if (globalSettings.humanJitter) customUA += ' AMEVA_JITTER';
-
-  webview.setAttribute('useragent', customUA);
+  webview.setAttribute('useragent', baseUA);
 
   // Apply proxy if defined
   const proxy = sessionStates[sessionId].proxy;
@@ -1113,6 +1237,19 @@ function launchEmbeddedWebview(sessionId, url) {
   // Webview reload listener
   webviewCell.querySelector(`#btn-webview-reload-${sessionId}`).addEventListener('click', () => {
     webview.reload();
+  });
+
+  // Webview navigation listeners
+  webviewCell.querySelector(`#btn-webview-back-${sessionId}`).addEventListener('click', () => {
+    if (webview.canGoBack()) {
+      webview.goBack();
+    }
+  });
+
+  webviewCell.querySelector(`#btn-webview-forward-${sessionId}`).addEventListener('click', () => {
+    if (webview.canGoForward()) {
+      webview.goForward();
+    }
   });
 
   // Zoom bindings
@@ -1152,6 +1289,15 @@ function launchEmbeddedWebview(sessionId, url) {
 function closeEmbeddedWebview(sessionId) {
   const cell = document.getElementById(`webview-cell-${sessionId}`);
   if (cell) {
+    // Explicitly close the SSE EventSource embedded in the webview preload
+    // by sending a close signal via IPC into the webview context
+    const wv = activeWebviews[sessionId];
+    if (wv) {
+      try {
+        // Terminate the SSE connection inside the webview by executing close script
+        wv.executeScript({ code: 'if (window.__ameva_sse) { window.__ameva_sse.close(); }' }).catch(() => {});
+      } catch (e) {}
+    }
     cell.remove();
   }
   delete activeWebviews[sessionId];
@@ -1391,18 +1537,30 @@ function resetAllProfiles() {
     // Give OS short time to release lock files
     setTimeout(() => {
       try {
+        // Clear in-memory Electron partitions for Onboard Mode
+        try {
+          const { session } = require('electron');
+          for (let i = 1; i <= MAX_SESSIONS; i++) {
+            const sess = session.fromPartition(`session-profile-${i}`);
+            sess.clearStorageData();
+          }
+        } catch (e) {
+          console.error('Failed to clear Electron session storage data:', e);
+        }
+
         const profilesPath = path.join(__dirname, 'profiles');
         if (fs.existsSync(profilesPath)) {
           fs.rmSync(profilesPath, { recursive: true, force: true });
-          alert('모든 프로필 캐시가 성공적으로 초기화되었습니다!');
-          
-          for (let i = 1; i <= MAX_SESSIONS; i++) {
-            sessionStates[i].lastKnownUrl = 'https://google.com';
-          }
-          saveSessionStates();
-          renderSessionCards();
-          statusText.textContent = '프로필 캐시 완전 초기화 완료';
         }
+        
+        alert('모든 프로필 캐시가 성공적으로 초기화되었습니다!');
+        
+        for (let i = 1; i <= MAX_SESSIONS; i++) {
+          sessionStates[i].lastKnownUrl = 'https://google.com';
+        }
+        saveSessionStates();
+        renderSessionCards();
+        statusText.textContent = '프로필 캐시 완전 초기화 완료';
       } catch (err) {
         console.error('Failed to reset profiles:', err);
         alert('일부 프로필 파일이 락(Lock) 상태이거나 삭제할 수 없습니다. 열려있는 세션이 완전히 꺼졌는지 확인해 주세요.');
@@ -1668,7 +1826,6 @@ function initListeners() {
 
 // Initializer
 function init() {
-  generatePreloadScript();
   fillHostSessionSelect();
   loadSettingsDOM();
   syncSettingsToServer();
