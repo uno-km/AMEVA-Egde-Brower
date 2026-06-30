@@ -9,7 +9,8 @@ const clients = {}; // session_id -> http response object
 
 let syncSettings = {
   syncInput: true,
-  hostSlaveMode: false
+  hostSlaveMode: false,
+  hostSession: 1
 };
 
 const server = http.createServer((req, res) => {
@@ -75,7 +76,21 @@ const server = http.createServer((req, res) => {
 
         // Filter: control events are blocked if sync is disabled or host-slave is off
         const isControlEvent = ['scroll', 'click', 'keydown'].includes(eventData.type);
-        const shouldBlock = isControlEvent && (!syncSettings.syncInput || !syncSettings.hostSlaveMode);
+        let shouldBlock = false;
+        
+        if (isControlEvent) {
+          if (!syncSettings.syncInput) {
+            shouldBlock = true;
+          } else if (syncSettings.hostSlaveMode) {
+            // Host-Slave 모드인 경우, 마스터(renderer)가 아니면서 현재 hostSession이 아닌 세션의 이벤트는 차단
+            if (sender !== 'renderer' && String(sender) !== String(syncSettings.hostSession)) {
+              shouldBlock = true;
+            }
+          } else {
+            // Host-Slave 모드가 비활성화 상태이면 제어 이벤트 차단
+            shouldBlock = true;
+          }
+        }
 
         if (!shouldBlock) {
           // Broadcast to all clients (excluding sender if needed, but renderer should get everything)

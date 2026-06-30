@@ -42,7 +42,8 @@ const sessionCardsContainer = document.getElementById('session-cards-container')
 const embeddedGridContainer = document.getElementById('embedded-grid-container');
 
 // Constants & Settings
-const MAX_SESSIONS = 6;
+// Constants & Settings
+const MAX_SESSIONS = 12;
 const EDGE_PATH = 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
 const CHROME_PATHS = [
   'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
@@ -63,6 +64,7 @@ const BASE_DEFAULT_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/5
 // State Store
 const spawnedProcesses = {}; // sessionId -> childProcess (for External Mode)
 const activeWebviews = {}; // sessionId -> webviewElement (for On-board Mode)
+const sessionZoomStates = {}; // sessionId -> zoom scale factor
 let activeLayout = '2x2';
 
 // 1. Session Configurations State (Local Storage)
@@ -99,7 +101,8 @@ function syncSettingsToServer() {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       syncInput: globalSettings.syncInput,
-      hostSlaveMode: globalSettings.hostSlaveMode
+      hostSlaveMode: globalSettings.hostSlaveMode,
+      hostSession: parseInt(globalSettings.hostSession) || 1
     })
   }).catch(() => {});
 }
@@ -325,8 +328,8 @@ function generatePreloadScript() {
     }
   };
 
-  // Only broadcast local events if this is NOT a slave (either we are host, or Host-Slave is off)
-  const shouldBroadcast = !isSlave;
+  // Broadcast local events unconditionally (filtering is done on server side)
+  const shouldBroadcast = true;
 
   if (shouldBroadcast) {
     window.addEventListener('scroll', function() {
@@ -747,8 +750,8 @@ function prepareExtension(sessionId) {
     }
   };
 
-  // Only broadcast local events if this is NOT a slave (either we are host, or Host-Slave is off)
-  const shouldBroadcast = ${!isSlave};
+  // Broadcast local events unconditionally (filtering is done on server side)
+  const shouldBroadcast = true;
 
   if (shouldBroadcast) {
     window.addEventListener('scroll', function() {
@@ -933,6 +936,12 @@ function launchBrowserWindow(sessionId, x, y, w, h, url) {
     '--no-default-browser-check'
   ];
 
+  if (browserType === 'edge') {
+    args.push('--inprivate');
+  } else {
+    args.push('--incognito');
+  }
+
   if (globalSettings.syncInput) {
     args.push(`--load-extension=${extDir}`);
   }
@@ -1012,13 +1021,43 @@ function launchEmbeddedWebview(sessionId, url) {
   webviewCell.className = 'webview-cell';
   webviewCell.id = `webview-cell-${sessionId}`;
 
+  const isHost = globalSettings.hostSlaveMode && parseInt(globalSettings.hostSession) === sessionId;
+  const isSlave = globalSettings.hostSlaveMode && parseInt(globalSettings.hostSession) !== sessionId;
+
+  let syncBadgeHtml = '';
+  if (globalSettings.hostSlaveMode) {
+    if (isHost) {
+      webviewCell.classList.add('is-sync-host');
+      syncBadgeHtml = `<span class="host-pill">👑 Host</span>`;
+    } else {
+      webviewCell.classList.add('is-sync-slave');
+      syncBadgeHtml = `<span class="slave-pill">🔗 Linked</span>`;
+    }
+  }
+
+  if (sessionZoomStates[sessionId] === undefined) {
+    sessionZoomStates[sessionId] = globalSettings.zoomScale || 0.8;
+  }
+  const initialZoomPercent = Math.round(sessionZoomStates[sessionId] * 100);
+
   webviewCell.innerHTML = `
     <div class="webview-cell-header">
-      <span><span class="title-dot"></span>Session ${sessionId} ${globalSettings.hostSlaveMode && parseInt(globalSettings.hostSession) === sessionId ? '(Host)' : ''}</span>
+      <div class="header-left">
+        <span class="title-dot"></span>
+        <span class="session-name">Session ${sessionId}</span>
+        <span class="sync-badge" id="sync-badge-${sessionId}">${syncBadgeHtml}</span>
+      </div>
       <span class="cell-url-text" id="webview-url-text-${sessionId}">Loading...</span>
-      <button class="small-btn" style="padding: 2px 6px;" id="btn-webview-reload-${sessionId}">🔄</button>
+      <div class="header-right">
+        <div class="zoom-controls">
+          <button class="zoom-btn" id="btn-zoom-out-${sessionId}" title="Zoom Out">-</button>
+          <span class="zoom-text" id="zoom-text-${sessionId}">${initialZoomPercent}%</span>
+          <button class="zoom-btn" id="btn-zoom-in-${sessionId}" title="Zoom In">+</button>
+        </div>
+        <button class="small-btn webview-reload-btn" id="btn-webview-reload-${sessionId}" style="padding: 2px 6px;">🔄</button>
+      </div>
     </div>
-    <webview id="webview-${sessionId}" partition="persist:session-profile-${sessionId}"></webview>
+    <webview id="webview-${sessionId}" partition="session-profile-${sessionId}"></webview>
   `;
 
   embeddedGridContainer.appendChild(webviewCell);
@@ -1031,9 +1070,6 @@ function launchEmbeddedWebview(sessionId, url) {
   webview.setAttribute('preload', 'file://' + preloadPath);
 
   // Set custom user-agent containing session flags
-  const isHost = globalSettings.hostSlaveMode && parseInt(globalSettings.hostSession) === sessionId;
-  const isSlave = globalSettings.hostSlaveMode && parseInt(globalSettings.hostSession) !== sessionId;
-  
   const uaKey = sessionStates[sessionId].userAgent;
   let baseUA = USER_AGENTS[uaKey] || BASE_DEFAULT_UA;
   
@@ -1056,6 +1092,16 @@ function launchEmbeddedWebview(sessionId, url) {
     });
   }
 
+  // Set zoom on dom-ready
+  webview.addEventListener('dom-ready', () => {
+    try {
+      const zoom = sessionZoomStates[sessionId] || 0.8;
+      webview.setZoomFactor(zoom);
+    } catch (e) {
+      console.warn('Failed to set zoom factor:', e);
+    }
+  });
+
   // Prepend protocol
   let targetUrl = url || 'https://google.com';
   if (!/^https?:\/\//i.test(targetUrl)) {
@@ -1067,6 +1113,30 @@ function launchEmbeddedWebview(sessionId, url) {
   // Webview reload listener
   webviewCell.querySelector(`#btn-webview-reload-${sessionId}`).addEventListener('click', () => {
     webview.reload();
+  });
+
+  // Zoom bindings
+  const zoomText = webviewCell.querySelector(`#zoom-text-${sessionId}`);
+  webviewCell.querySelector(`#btn-zoom-out-${sessionId}`).addEventListener('click', (e) => {
+    e.stopPropagation();
+    let zoom = sessionZoomStates[sessionId] || 0.8;
+    zoom = Math.max(0.3, parseFloat((zoom - 0.1).toFixed(1)));
+    sessionZoomStates[sessionId] = zoom;
+    if (zoomText) zoomText.textContent = `${Math.round(zoom * 100)}%`;
+    try {
+      webview.setZoomFactor(zoom);
+    } catch(e) {}
+  });
+
+  webviewCell.querySelector(`#btn-zoom-in-${sessionId}`).addEventListener('click', (e) => {
+    e.stopPropagation();
+    let zoom = sessionZoomStates[sessionId] || 0.8;
+    zoom = Math.min(2.0, parseFloat((zoom + 0.1).toFixed(1)));
+    sessionZoomStates[sessionId] = zoom;
+    if (zoomText) zoomText.textContent = `${Math.round(zoom * 100)}%`;
+    try {
+      webview.setZoomFactor(zoom);
+    } catch(e) {}
   });
 
   // Track active focus
@@ -1107,6 +1177,16 @@ function updateSessionStatusUI(sessionId, isActive) {
   }
 }
 
+function updateProxyWarningUI(sessionId, val) {
+  const warningDiv = document.getElementById(`proxy-warning-${sessionId}`);
+  if (!warningDiv) return;
+  if (val) {
+    warningDiv.innerHTML = `<span style="color: var(--success-color); font-weight: 600;">🟢 Proxy Active</span>`;
+  } else {
+    warningDiv.innerHTML = `<span style="color: var(--danger-color); font-weight: 600; text-shadow: 0 0 4px rgba(239, 68, 68, 0.2);">⚠️ No Proxy (공유 IP로 동시 접속 시 차단 위험)</span>`;
+  }
+}
+
 // Render dynamic session cards
 function renderSessionCards() {
   sessionCardsContainer.innerHTML = '';
@@ -1117,19 +1197,32 @@ function renderSessionCards() {
     card.className = 'session-card';
     card.id = `session-card-${i}`;
 
+    const isHost = globalSettings.hostSlaveMode && parseInt(globalSettings.hostSession) === i;
+    if (globalSettings.hostSlaveMode) {
+      if (isHost) {
+        card.classList.add('is-dashboard-host');
+      } else {
+        card.classList.add('is-dashboard-slave');
+      }
+    }
+
     card.innerHTML = `
       <div class="card-header">
         <span class="session-title">
           <span class="status-dot"></span> Session ${i}
+          ${globalSettings.hostSlaveMode ? (isHost ? '<span class="host-pill-sm">👑 Host</span>' : '<span class="slave-pill-sm">🔗 Slave</span>') : ''}
         </span>
         <span class="badge-status" id="session-badge-${i}" style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted);">Closed</span>
       </div>
       <div class="card-fields">
         <div class="card-field-row">
           <label>Proxy</label>
-          <input type="text" class="card-input" id="session-proxy-${i}" placeholder="IP:Port" value="${state.proxy}">
+          <div style="display: flex; flex-direction: column; width: 100%;">
+            <input type="text" class="card-input" id="session-proxy-${i}" placeholder="IP:Port" value="${state.proxy}">
+            <div class="proxy-warning" id="proxy-warning-${i}" style="font-size: 0.7rem; margin-top: 4px;"></div>
+          </div>
         </div>
-        <div class="card-field-row">
+        <div class="card-field-row" style="margin-top: 6px;">
           <label>User Agent</label>
           <select class="card-select" id="session-ua-${i}">
             <option value="default" ${state.userAgent === 'default' ? 'selected' : ''}>Default (Edge/Chrome)</option>
@@ -1151,9 +1244,14 @@ function renderSessionCards() {
 
     sessionCardsContainer.appendChild(card);
 
+    // Initial proxy warning state
+    updateProxyWarningUI(i, state.proxy);
+
     // Form Change listeners
     card.querySelector(`#session-proxy-${i}`).addEventListener('input', (e) => {
-      sessionStates[i].proxy = e.target.value.trim();
+      const val = e.target.value.trim();
+      sessionStates[i].proxy = val;
+      updateProxyWarningUI(i, val);
       saveSessionStates();
     });
 
@@ -1244,6 +1342,8 @@ function launchGrid() {
     // On-board webview grid creation
     embeddedGridContainer.innerHTML = '';
     embeddedGridContainer.className = `layout-${activeLayout}`;
+    embeddedGridContainer.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+    embeddedGridContainer.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
     
     for (let i = 1; i <= MAX_SESSIONS; i++) {
       if (i <= totalCount) {
@@ -1375,6 +1475,69 @@ function loadSettingsDOM() {
   }
 }
 
+function fillHostSessionSelect() {
+  if (hostSessionSelect) {
+    const currentVal = hostSessionSelect.value;
+    hostSessionSelect.innerHTML = '';
+    for (let i = 1; i <= MAX_SESSIONS; i++) {
+      const opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = `Session ${i}`;
+      hostSessionSelect.appendChild(opt);
+    }
+    if (currentVal && parseInt(currentVal) <= MAX_SESSIONS) {
+      hostSessionSelect.value = currentVal;
+    }
+  }
+}
+
+function updateSyncVisuals() {
+  // 1. 대시보드 세션 카드 업데이트
+  for (let i = 1; i <= MAX_SESSIONS; i++) {
+    const card = document.getElementById(`session-card-${i}`);
+    if (card) {
+      card.classList.remove('is-dashboard-host', 'is-dashboard-slave');
+      const isHost = globalSettings.hostSlaveMode && parseInt(globalSettings.hostSession) === i;
+      const titleSpan = card.querySelector('.session-title');
+      
+      if (titleSpan) {
+        let badgeHtml = `<span class="status-dot"></span> Session ${i}`;
+        if (globalSettings.hostSlaveMode) {
+          if (isHost) {
+            card.classList.add('is-dashboard-host');
+            badgeHtml += ` <span class="host-pill-sm">👑 Host</span>`;
+          } else {
+            card.classList.add('is-dashboard-slave');
+            badgeHtml += ` <span class="slave-pill-sm">🔗 Slave</span>`;
+          }
+        }
+        titleSpan.innerHTML = badgeHtml;
+      }
+    }
+  }
+
+  // 2. 온보드 웹뷰 셀 업데이트
+  for (let i = 1; i <= MAX_SESSIONS; i++) {
+    const cell = document.getElementById(`webview-cell-${i}`);
+    if (cell) {
+      cell.classList.remove('is-sync-host', 'is-sync-slave');
+      const badge = cell.querySelector(`#sync-badge-${i}`);
+      if (badge) badge.innerHTML = '';
+
+      if (globalSettings.hostSlaveMode) {
+        const isHost = parseInt(globalSettings.hostSession) === i;
+        if (isHost) {
+          cell.classList.add('is-sync-host');
+          if (badge) badge.innerHTML = `<span class="host-pill">👑 Host</span>`;
+        } else {
+          cell.classList.add('is-sync-slave');
+          if (badge) badge.innerHTML = `<span class="slave-pill">🔗 Linked</span>`;
+        }
+      }
+    }
+  }
+}
+
 // Update settings state from DOM and save
 function saveSettingsFromDOM() {
   globalSettings.theme = themeSelect.value;
@@ -1391,6 +1554,7 @@ function saveSettingsFromDOM() {
   globalSettings.settingsPanelCollapsed = controlPanel.classList.contains('collapsed');
   
   saveGlobalSettings();
+  updateSyncVisuals();
 }
 
 // Listeners Setup
@@ -1505,11 +1669,13 @@ function initListeners() {
 // Initializer
 function init() {
   generatePreloadScript();
+  fillHostSessionSelect();
   loadSettingsDOM();
   syncSettingsToServer();
   renderSessionCards();
   initListeners();
   initSyncServerConnection();
+  updateSyncVisuals();
 }
 
 window.addEventListener('DOMContentLoaded', init);

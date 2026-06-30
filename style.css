@@ -800,6 +800,135 @@ body.theme-transparent .webview-cell {
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+/* ==========================================================================
+   Zoom Controls & Host-Slave Sync Styles
+   ========================================================================== */
+
+/* Zoom Control styling */
+.zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 2px 8px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  margin-right: 8px;
+  user-select: none;
+}
+
+.zoom-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-main);
+  font-size: 0.85rem;
+  font-weight: 800;
+  cursor: pointer;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background 0.15s;
+}
+
+.zoom-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.zoom-text {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--accent-cyan);
+  min-width: 32px;
+  text-align: center;
+}
+
+/* Sync Header Details */
+.webview-cell-header .header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.webview-cell-header .header-right {
+  display: flex;
+  align-items: center;
+}
+
+.webview-cell-header .session-name {
+  font-weight: 800;
+  font-size: 0.8rem;
+  color: var(--text-main);
+}
+
+/* Sync status badges (Webview Header) */
+.host-pill {
+  background: linear-gradient(135deg, var(--accent-purple), #7b2cbf);
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(157, 78, 221, 0.5);
+  box-shadow: 0 0 8px rgba(157, 78, 221, 0.4);
+}
+
+.slave-pill {
+  background: rgba(0, 245, 212, 0.12);
+  color: var(--accent-cyan);
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 245, 212, 0.3);
+}
+
+/* Webview cell status highlights */
+.webview-cell.is-sync-host {
+  border-color: var(--accent-purple);
+  box-shadow: 0 0 18px var(--accent-glow);
+}
+
+.webview-cell.is-sync-slave {
+  border-color: rgba(157, 78, 221, 0.45);
+  border-style: dashed;
+}
+
+/* Dashboard card sync status highlights */
+.session-card.is-dashboard-host {
+  border-color: var(--accent-purple) !important;
+  box-shadow: 0 0 15px var(--accent-glow) !important;
+}
+
+.session-card.is-dashboard-slave {
+  border-color: rgba(157, 78, 221, 0.4) !important;
+  border-style: dashed !important;
+}
+
+/* Sync status badges (Dashboard Card) */
+.host-pill-sm {
+  background: var(--accent-purple);
+  color: white;
+  font-size: 0.6rem;
+  font-weight: 800;
+  padding: 1px 4px;
+  border-radius: 3px;
+  margin-left: 6px;
+}
+
+.slave-pill-sm {
+  background: rgba(157, 78, 221, 0.15);
+  color: #c77dff;
+  border: 1px solid rgba(157, 78, 221, 0.3);
+  font-size: 0.6rem;
+  font-weight: 800;
+  padding: 0 4px;
+  border-radius: 3px;
+  margin-left: 6px;
+}
+
 body.theme-transparent .card-input,
 body.theme-transparent .card-select,
 body.theme-transparent .num-input,
