@@ -214,6 +214,12 @@ app.on('web-contents-created', (event, contents) => {
   }
 });
 
+ipcMain.on('toggle-fullscreen', () => {
+  if (mainWindow) {
+    mainWindow.setFullScreen(!mainWindow.isFullScreen());
+  }
+});
+
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();

@@ -10,6 +10,7 @@ const btnLaunchGrid = document.getElementById('btn-launch-grid');
 const btnRealignGrid = document.getElementById('btn-realign-grid');
 const btnCloseAll = document.getElementById('btn-close-all');
 const btnResetProfiles = document.getElementById('btn-reset-profiles');
+const btnFullscreenToggle = document.getElementById('btn-fullscreen-toggle');
 const statusText = document.getElementById('status-text');
 
 // Settings & Layout Elements
@@ -110,6 +111,55 @@ function syncSettingsToServer() {
 function saveGlobalSettings() {
   localStorage.setItem('ameva_global_settings', JSON.stringify(globalSettings));
   syncSettingsToServer();
+}
+
+function parseProxyString(proxyStr) {
+  if (!proxyStr) return null;
+  proxyStr = proxyStr.trim();
+  
+  let protocol = 'http'; // Default protocol
+  let username = '';
+  let password = '';
+  let host = '';
+  let port = '';
+
+  // Check if protocol is specified
+  const protoMatch = proxyStr.match(/^(https?|socks5|socks4):\/\//i);
+  if (protoMatch) {
+    protocol = protoMatch[1].toLowerCase();
+    proxyStr = proxyStr.substring(protoMatch[0].length);
+  }
+
+  // Format: username:password@host:port
+  if (proxyStr.includes('@')) {
+    const parts = proxyStr.split('@');
+    const authParts = parts[0].split(':');
+    username = authParts[0] || '';
+    password = authParts[1] || '';
+    
+    const hostParts = parts[1].split(':');
+    host = hostParts[0] || '';
+    port = hostParts[1] || '';
+  } else {
+    const parts = proxyStr.split(':');
+    // Format: host:port:username:password
+    if (parts.length === 4) {
+      host = parts[0];
+      port = parts[1];
+      username = parts[2];
+      password = parts[3];
+    } else {
+      // Format: host:port
+      host = parts[0];
+      port = parts[1] || '8080';
+    }
+  }
+
+  return {
+    rule: `${protocol}://${host}:${port}`,
+    username,
+    password
+  };
 }
 
 // Apply visual theme to document body
@@ -1199,6 +1249,8 @@ function launchEmbeddedWebview(sessionId, url) {
       </div>
       <span class="cell-url-text" id="webview-url-text-${sessionId}">Loading...</span>
       <div class="header-right">
+        <button class="small-btn webview-expand-btn" id="btn-webview-expand-${sessionId}" style="padding: 2px 6px; font-size: 0.75rem;" title="전체화면 / 격자 복귀">🔍</button>
+        <button class="small-btn webview-settings-btn" id="btn-webview-settings-${sessionId}" style="padding: 2px 6px; font-size: 0.75rem;" title="세션 설정">⚙️</button>
         <div class="zoom-controls">
           <button class="zoom-btn" id="btn-zoom-out-${sessionId}" title="Zoom Out">-</button>
           <span class="zoom-text" id="zoom-text-${sessionId}">${initialZoomPercent}%</span>
@@ -1211,6 +1263,26 @@ function launchEmbeddedWebview(sessionId, url) {
         <button class="small-btn webview-reload-btn" id="btn-webview-reload-${sessionId}" style="padding: 2px 6px;">🔄</button>
       </div>
     </div>
+    <div class="webview-settings-dropdown" id="webview-settings-dropdown-${sessionId}" style="display: none;">
+      <div class="setting-row">
+        <label>Proxy Settings (IP:Port 또는 SOCKS5/HTTP 인증 포맷)</label>
+        <input type="text" class="card-input" id="grid-proxy-input-${sessionId}" placeholder="예: user:pass@ip:port 또는 ip:port" value="${sessionStates[sessionId].proxy}">
+      </div>
+      <div class="setting-row" style="margin-top: 6px;">
+        <label>User Agent (유저 에이전트)</label>
+        <select class="card-select" id="grid-ua-select-${sessionId}">
+          <option value="default" ${sessionStates[sessionId].userAgent === 'default' ? 'selected' : ''}>Default (Edge/Chrome)</option>
+          <option value="iphone" ${sessionStates[sessionId].userAgent === 'iphone' ? 'selected' : ''}>Mobile (iPhone Safari)</option>
+          <option value="android" ${sessionStates[sessionId].userAgent === 'android' ? 'selected' : ''}>Mobile (Android Chrome)</option>
+          <option value="macos" ${sessionStates[sessionId].userAgent === 'macos' ? 'selected' : ''}>Desktop (macOS Chrome)</option>
+          <option value="firefox" ${sessionStates[sessionId].userAgent === 'firefox' ? 'selected' : ''}>Desktop (Win Firefox)</option>
+        </select>
+      </div>
+      <div style="margin-top: 10px; display: flex; gap: 6px; justify-content: flex-end;">
+        <button class="small-btn apply-btn" id="btn-grid-apply-${sessionId}" style="padding: 4px 10px;">적용 & 새로고침</button>
+        <button class="small-btn cancel-btn" id="btn-grid-cancel-${sessionId}" style="padding: 4px 10px;">닫기</button>
+      </div>
+    </div>
     <webview id="webview-${sessionId}" partition="session-profile-${sessionId}" allowpopups></webview>
   `;
 
@@ -1219,13 +1291,24 @@ function launchEmbeddedWebview(sessionId, url) {
   const webview = webviewCell.querySelector('webview');
   activeWebviews[sessionId] = webview;
 
-  // Set WebRTC IP handling policy to prevent local/public IP leaks via WebRTC when using proxies
+  // Set WebRTC IP handling policy & Proxy Authentication
   try {
     const { session } = require('electron');
     const partitionSession = session.fromPartition(`session-profile-${sessionId}`);
     partitionSession.setWebRTCIPHandlingPolicy('disable_non_proxied_udp');
+    
+    // Clear existing logins and register credentials handler
+    partitionSession.removeAllListeners('login');
+    partitionSession.on('login', (event, details, authInfo, callback) => {
+      const proxyInput = sessionStates[sessionId].proxy;
+      const parsed = parseProxyString(proxyInput);
+      if (parsed && parsed.username) {
+        event.preventDefault();
+        callback(parsed.username, parsed.password);
+      }
+    });
   } catch (err) {
-    console.error('Failed to set WebRTC IP policy:', err);
+    console.error('Failed to set session policies:', err);
   }
 
   // Set Preload script path (dynamically generated per-session)
@@ -1240,11 +1323,14 @@ function launchEmbeddedWebview(sessionId, url) {
   // Apply proxy if defined
   const proxy = sessionStates[sessionId].proxy;
   if (proxy) {
-    webview.addEventListener('dom-ready', () => {
-      webview.getWebContents().setProxy({ proxyRules: proxy }).then(() => {
-        console.log(`[Proxy] Applied ${proxy} to Session ${sessionId} webview`);
+    const parsed = parseProxyString(proxy);
+    if (parsed) {
+      webview.addEventListener('dom-ready', () => {
+        webview.getWebContents().setProxy({ proxyRules: parsed.rule }).then(() => {
+          console.log(`[Proxy] Applied ${parsed.rule} to Session ${sessionId} webview`);
+        });
       });
-    });
+    }
   }
 
   // Set zoom on dom-ready
@@ -1305,6 +1391,98 @@ function launchEmbeddedWebview(sessionId, url) {
     try {
       webview.setZoomFactor(zoom);
     } catch(e) {}
+  });
+
+  // Settings dropdown toggle
+  const settingsBtn = webviewCell.querySelector(`#btn-webview-settings-${sessionId}`);
+  const settingsDropdown = webviewCell.querySelector(`#webview-settings-dropdown-${sessionId}`);
+  settingsBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isVisible = settingsDropdown.style.display === 'block';
+    settingsDropdown.style.display = isVisible ? 'none' : 'block';
+  });
+
+  // Cancel button
+  webviewCell.querySelector(`#btn-grid-cancel-${sessionId}`).addEventListener('click', (e) => {
+    e.stopPropagation();
+    settingsDropdown.style.display = 'none';
+  });
+
+  // Apply button
+  webviewCell.querySelector(`#btn-grid-apply-${sessionId}`).addEventListener('click', (e) => {
+    e.stopPropagation();
+    const proxyInput = webviewCell.querySelector(`#grid-proxy-input-${sessionId}`).value.trim();
+    const uaSelect = webviewCell.querySelector(`#grid-ua-select-${sessionId}`).value;
+
+    sessionStates[sessionId].proxy = proxyInput;
+    sessionStates[sessionId].userAgent = uaSelect;
+    saveSessionStates();
+
+    // Update warning UI
+    updateProxyWarningUI(sessionId, proxyInput);
+    
+    // Sync the inputs on the dashboard card
+    const cardProxy = document.getElementById(`session-proxy-${sessionId}`);
+    if (cardProxy) cardProxy.value = proxyInput;
+    const cardUa = document.getElementById(`session-ua-${sessionId}`);
+    if (cardUa) cardUa.value = uaSelect;
+
+    // Apply Proxy to session dynamically
+    if (proxyInput) {
+      const parsed = parseProxyString(proxyInput);
+      if (parsed) {
+        webview.getWebContents().setProxy({ proxyRules: parsed.rule }).then(() => {
+          console.log(`[Proxy] Re-applied ${parsed.rule} to Session ${sessionId} webview`);
+          
+          const preloadPath = generatePreloadScript(sessionId, isHost, isSlave);
+          webview.setAttribute('preload', 'file://' + preloadPath);
+          
+          const baseUA = USER_AGENTS[uaSelect] || BASE_DEFAULT_UA;
+          webview.setAttribute('useragent', baseUA);
+          
+          webview.reload();
+        });
+      }
+    } else {
+      webview.getWebContents().setProxy({ proxyRules: '' }).then(() => {
+        console.log(`[Proxy] Cleared proxy for Session ${sessionId} webview`);
+        
+        const preloadPath = generatePreloadScript(sessionId, isHost, isSlave);
+        webview.setAttribute('preload', 'file://' + preloadPath);
+        
+        const baseUA = USER_AGENTS[uaSelect] || BASE_DEFAULT_UA;
+        webview.setAttribute('useragent', baseUA);
+        
+        webview.reload();
+      });
+    }
+    
+    settingsDropdown.style.display = 'none';
+  });
+
+  // Expand / Maximize toggle
+  const expandBtn = webviewCell.querySelector(`#btn-webview-expand-${sessionId}`);
+  expandBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isMaximized = webviewCell.classList.contains('maximized-cell');
+    if (isMaximized) {
+      document.querySelectorAll('.webview-cell').forEach(c => {
+        c.style.display = '';
+        c.classList.remove('maximized-cell');
+      });
+      expandBtn.textContent = '🔍';
+      expandBtn.title = '전체화면';
+    } else {
+      document.querySelectorAll('.webview-cell').forEach(c => {
+        if (c.id !== `webview-cell-${sessionId}`) {
+          c.style.display = 'none';
+        } else {
+          c.classList.add('maximized-cell');
+        }
+      });
+      expandBtn.textContent = '🗗';
+      expandBtn.title = '격자 복귀';
+    }
   });
 
   // Track active focus
@@ -1793,6 +1971,18 @@ function initListeners() {
 
   btnGo.addEventListener('click', syncNavigateAll);
   btnReload.addEventListener('click', syncReloadAll);
+  btnFullscreenToggle.addEventListener('click', () => {
+    const { ipcRenderer } = require('electron');
+    ipcRenderer.send('toggle-fullscreen');
+  });
+
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'F11') {
+      e.preventDefault();
+      const { ipcRenderer } = require('electron');
+      ipcRenderer.send('toggle-fullscreen');
+    }
+  });
 
   // Global Settings Change Listener
   const bindSave = (elem) => elem.addEventListener('change', saveSettingsFromDOM);
