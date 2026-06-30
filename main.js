@@ -123,6 +123,18 @@ server.listen(8080, '127.0.0.1', () => {
   console.log('Sync server listening on http://127.0.0.1:8080');
 });
 
+// Periodic heartbeat to clean up stale SSE connections
+setInterval(() => {
+  Object.keys(clients).forEach(id => {
+    try {
+      clients[id].write(`data: ${JSON.stringify({ type: 'heartbeat' })}\n\n`);
+    } catch (err) {
+      console.log(`[SSE] Cleaned up dead client connection for session ${id}`);
+      delete clients[id];
+    }
+  });
+}, 15000);
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1000,

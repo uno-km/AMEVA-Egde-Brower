@@ -158,6 +158,31 @@ function generatePreloadScript(sessionId, isHost, isSlave) {
         Object.defineProperty(navigator, 'deviceMemory', { get: () => randomMemory });
         Object.defineProperty(navigator, 'webdriver', { get: () => false });
 
+        // Languages spoofing
+        const languages = [['ko-KR', 'ko', 'en-US', 'en'], ['en-US', 'en', 'ko-KR', 'ko']][sessionId % 2];
+        Object.defineProperty(navigator, 'languages', { get: () => languages, configurable: true });
+        Object.defineProperty(navigator, 'language', { get: () => languages[0], configurable: true });
+
+        // Timezone spoofing
+        const timeZone = ['Asia/Seoul', 'Asia/Tokyo', 'America/New_York'][sessionId % 3];
+        const originalResolvedOptions = Intl.DateTimeFormat.prototype.resolvedOptions;
+        Intl.DateTimeFormat.prototype.resolvedOptions = function() {
+          const options = originalResolvedOptions.apply(this, arguments);
+          options.timeZone = timeZone;
+          return options;
+        };
+
+        // Permissions query spoofing
+        if (navigator.permissions && navigator.permissions.query) {
+          const originalQuery = navigator.permissions.query;
+          navigator.permissions.query = function(parameters) {
+            return originalQuery.apply(this, arguments).then(res => {
+              Object.defineProperty(res, 'state', { get: () => 'prompt', configurable: true });
+              return res;
+            });
+          };
+        }
+
         // Spoof userAgentData for Client Hints compatibility
         if (navigator.userAgentData) {
           const mockUserAgentData = {
@@ -938,7 +963,13 @@ function prepareExtension(sessionId) {
 
 // Establish SSE connection to update UI states in real time
 function initSyncServerConnection() {
+  if (window.syncSse) {
+    try {
+      window.syncSse.close();
+    } catch (e) {}
+  }
   const syncSse = new EventSource('http://127.0.0.1:8080/events?session=renderer');
+  window.syncSse = syncSse;
   
   syncSse.onmessage = (event) => {
     try {

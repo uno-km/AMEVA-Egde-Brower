@@ -1,24 +1,34 @@
-# AMEVA Multi-Session Grid Browser - Exhaustive Claude Code Audit Prompt
+# AMEVA Multi-Session Grid Browser — Claude Code 전수조사 프롬프트 (완전판)
 
-이 프롬프트를 복사하여 **Claude Code**에 전송하십시오. 이 프롬프트는 모든 파일의 핵심 로직 코드 스니펫과 아키텍처 구조를 생략 없이 담고 있어, 코드에 대한 직접적이고 정교한 검수가 가능합니다.
-
-```markdown
-당신은 일렉트론(Electron), Chromium 아키텍처, 브라우저 핑거프린트 보안 우회(Anti-Detect), 그리고 OS 수준 입력 동기화 제어 분야의 세계 최고 권위자인 수석 시스템 아키텍트(Principal Software Engineer)입니다.
-
-현재 개발 중인 **AMEVA Multi-Session Grid Browser**의 소스 코드를 전수조사하고, 우회 기능의 미흡함, 성능 병목, 메모리 누수, 그리고 로그인/인증 예외 사항 등을 철저히 감사(Audit)하기 위해 세부 코드를 제공합니다.
-
-다음 소스 코드 구조와 핵심 로직 구현을 읽고 점검하여 완벽한 개선 리포트와 수정 패치 코드를 작성해 주십시오.
+Claude Code에 이 전체 내용을 그대로 복사해서 붙여넣으십시오.
 
 ---
 
-## 1. 파일별 핵심 구현 스크립트
+```markdown
+당신은 Electron, Chromium 내부 아키텍처, Anti-Detect 브라우저 우회 기법, 그리고 OS 수준 입력 동기화 시스템 분야의 최고 수준 보안 엔지니어입니다.
 
-### [A] main.js (핵심 부분)
-이 메인 프로세스는 로컬 HTTP/SSE 동기화 서버를 구동하며, 웹뷰의 팝업 창을 탐지하여 가로챕니다. 또한 DNS Leak 및 WebRTC IP 누수 방지를 위한 Chromium 커맨드라인 스위치를 전역 주입합니다.
+아래는 현재 개발 중인 **AMEVA Multi-Session Grid Browser** 프로젝트의 모든 핵심 파일 코드입니다. 이 코드들을 전수조사하고, 잠재적인 버그, 보안 우회 누락, 메모리 누수, 인증 흐름 파괴, 클릭 정밀도 오차 등을 빠짐없이 찾아 수정 제안 및 완전한 패치 코드를 작성해 주십시오.
+
+---
+
+## ★ 사전 공지: 이미 발견된 버그 목록 (이것들은 이미 수정됨)
+
+다음은 이미 발견 및 수정된 버그입니다. 다시 지적할 필요 없으며, 아직 수정되지 않은 추가적인 문제를 탐색하십시오:
+
+1. OAuth 팝업(`accounts.google.com` 등)을 `contents.loadURL()`로 가로채어 같은 웹뷰에 로드 → `window.opener` 소실로 로그인 플로우 파괴 **[수정됨: URL 패턴 감지 후 실제 BrowserWindow 팝업 생성으로 분기]**
+2. `closeEmbeddedWebview()`가 웹뷰 DOM만 제거하고 내부 SSE `EventSource`는 `close()` 미호출 → 메모리 누수 **[수정됨: `window.__ameva_sse.close()` executeScript 주입]**
+3. `sendInputEvent`의 클릭 좌표 계산 시 줌 배율(`zoomFactor`) 미반영으로 좌표 엇나감 **[수정됨: `rawX / zoomFactor` 보정 수식 적용]**
+4. `toDataURL`/`toBlob` 오버라이드에서 WebGL 캔버스에 `getContext('2d')`를 호출해 Context 충돌 에러 발생 **[수정됨: `this._webgl` 플래그로 2D/3D 캔버스 구분]**
+5. External Mode(`content.js`)의 AntiFingerprint 블록에 WebGL2, `navigator.webdriver`, `userAgentData`, `window.chrome` 우회 코드 완전 누락 **[수정됨: 동일한 스텔스 블록 삽입]**
+
+---
+
+## 1. 전체 파일 코드
+
+### [A] main.js (170줄 전체)
 
 ```javascript
-const { app, BrowserWindow, ipcMain } = require('electron');
-// DNS Leak 방지 (DOH) 및 WebRTC 로컬 인터페이스 누수 방지 스위치 강제 주입
+const { app, BrowserWindow, ipcMain, session } = require('electron');
 app.commandLine.appendSwitch('dns-over-https-templates', 'https://chrome.cloudflare-dns.com/dns-query');
 app.commandLine.appendSwitch('disable-webrtc-multiple-routes');
 
@@ -26,86 +36,147 @@ const path = require('path');
 const http = require('http');
 
 let mainWindow;
-const clients = {}; // session_id -> http response object
+const clients = {}; // session_id -> SSE http.ServerResponse
+
 let syncSettings = {
   syncInput: true,
   hostSlaveMode: false,
   hostSession: 1
 };
 
-// 동기화 HTTP & SSE 서버
 const server = http.createServer((req, res) => {
-  // CORS 및 라우팅 설정 생략...
-  // /events (SSE 연결 등록): clients[sessionId] = res
-  // /update-settings (설정 저장): syncSettings 업데이트
-  // /broadcast (이벤트 배포):
-  //   Control Event (scroll, click, keydown) 인 경우, hostSlaveMode가 켜져 있으면 
-  //   sender가 hostSession 혹은 renderer 일 경우에만 브로드캐스트 수행. 그 외에는 차단(shouldBlock = true)
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') { res.writeHead(200); res.end(); return; }
+
+  // [SSE] /events?session=<id> — 클라이언트 SSE 연결 등록
+  if (req.url.startsWith('/events')) {
+    const urlObj = new URL(req.url, 'http://localhost');
+    const sessionId = urlObj.searchParams.get('session');
+    res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', 'Connection': 'keep-alive' });
+    clients[sessionId] = res;
+    res.write(`data: ${JSON.stringify({ type: 'connected', sessionId })}\n\n`);
+    req.on('close', () => { delete clients[sessionId]; });
+    return;
+  }
+
+  // [POST] /update-settings — syncSettings 갱신
+  if (req.url === '/update-settings' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', () => {
+      try {
+        syncSettings = { ...syncSettings, ...JSON.parse(body) };
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true }));
+      } catch { res.writeHead(400); res.end(); }
+    });
+    return;
+  }
+
+  // [POST] /broadcast — 이벤트 배포 (Host-Slave 필터링 포함)
+  if (req.url === '/broadcast' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', () => {
+      try {
+        const eventData = JSON.parse(body);
+        const sender = eventData.sender;
+        const isControlEvent = ['scroll', 'click', 'keydown'].includes(eventData.type);
+        let shouldBlock = false;
+        if (isControlEvent) {
+          if (!syncSettings.syncInput) {
+            shouldBlock = true;
+          } else if (syncSettings.hostSlaveMode) {
+            // Host-Slave 모드: hostSession 또는 renderer(내부 클릭 처리자)의 이벤트만 통과
+            if (sender !== 'renderer' && String(sender) !== String(syncSettings.hostSession)) {
+              shouldBlock = true; // Slave가 자체 전송한 이벤트를 다시 배포하는 루프 차단
+            }
+          } else {
+            shouldBlock = true; // Host-Slave 모드 꺼진 상태에서 제어 이벤트 차단
+          }
+        }
+        if (!shouldBlock) {
+          Object.keys(clients).forEach(id => {
+            if (id === 'renderer' || id !== String(sender)) {
+              clients[id].write(`data: ${JSON.stringify(eventData)}\n\n`);
+            }
+          });
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true }));
+      } catch { res.writeHead(400); res.end(); }
+    });
+    return;
+  }
+
+  res.writeHead(404); res.end();
 });
+
+server.listen(8080, '127.0.0.1');
+
+function createWindow() {
+  mainWindow = new BrowserWindow({
+    width: 1000,
+    height: 800,
+    title: 'AMEVA Multi-Session Launcher',
+    webPreferences: {
+      nodeIntegration: true,     // ★ 보안 위험 — renderer에서 fs, path, child_process 등 노드 API 직접 사용 중
+      contextIsolation: false,   // ★ 보안 위험 — contextIsolation 꺼져 있어 XSS 시 노드 풀 접근 가능
+      webviewTag: true
+    }
+  });
+  mainWindow.loadFile('index.html');
+}
+
+app.whenReady().then(createWindow);
+
+// OAuth 인증 팝업 URL 패턴 — 이 URL에 해당하는 팝업은 실제 BrowserWindow를 생성
+const OAUTH_URL_PATTERNS = [
+  /accounts\.google\.com/i, /oauth2\.googleapis\.com/i,
+  /nid\.naver\.com/i, /auth\.kakao\.com/i,
+  /facebook\.com\/dialog\/oauth/i, /login\.microsoftonline\.com/i,
+  /appleid\.apple\.com/i, /github\.com\/login\/oauth/i,
+  /api\.twitter\.com\/oauth/i, /\/oauth/i, /\/auth\/callback/i, /\/login\?/i
+];
 
 app.on('web-contents-created', (event, contents) => {
   if (contents.getType() === 'webview') {
-    // window.open() 팝업 요청을 가로채어 현재 창에 강제 로드
     contents.setWindowOpenHandler((details) => {
-      contents.loadURL(details.url);
-      return { action: 'deny' }; // 새 네이티브 윈도우 생성 거절
+      const url = details.url;
+      const isOAuth = OAUTH_URL_PATTERNS.some(p => p.test(url));
+      if (isOAuth) {
+        // OAuth 팝업: 세션 공유하는 실제 BrowserWindow 생성
+        const parentPartition = contents.session.persist ? contents.session : null;
+        const popup = new BrowserWindow({
+          width: 500, height: 700, title: 'Login',
+          webPreferences: {
+            nodeIntegration: false,
+            contextIsolation: true,
+            session: parentPartition || session.defaultSession
+          }
+        });
+        popup.loadURL(url);
+        return { action: 'deny' };
+      }
+      // 일반 팝업: 같은 웹뷰에 강제 로드
+      contents.loadURL(url);
+      return { action: 'deny' };
     });
   }
 });
+
+app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
 ```
 
-### [B] renderer.js (이벤트 수신 및 네이티브 클릭 시뮬레이션 부분)
-이 렌더러 프로세스는 로컬 SSE 서버로부터 수신한 클릭 좌표를 가공하여, `webview.sendInputEvent`를 통해 OS 수준의 네이티브 이벤트를 하위 웹뷰에 주입합니다.
+### [B] renderer.js — 핵심 함수들 (전체 1774줄 중 중요 구간)
 
-```javascript
-function initSyncServerConnection() {
-  const syncSse = new EventSource('http://127.0.0.1:8080/events?session=renderer');
-  
-  syncSse.onmessage = (event) => {
-    try {
-      const data = JSON.parse(event.data);
-      if (data.type === 'status') {
-        // UI 주소창 갱신 및 상태 동기화...
-      } else if (data.type === 'click') {
-        // 네이티브 마우스 입력 동기화 (Slave)
-        const hostId = parseInt(globalSettings.hostSession);
-        if (globalSettings.hostSlaveMode && parseInt(data.sender) === hostId) {
-          for (let i = 1; i <= MAX_SESSIONS; i++) {
-            if (i !== hostId && activeWebviews[i]) {
-              const webview = activeWebviews[i];
-              try {
-                const rect = webview.getBoundingClientRect();
-                const x = Math.round(data.x * rect.width);
-                const y = Math.round(data.y * rect.height);
-                
-                // OS 마우스 이동 및 버튼 다운/업을 모사 (isTrusted = true 보장)
-                webview.sendInputEvent({ type: 'mouseDown', x, y, button: 'left', clickCount: 1 });
-                webview.sendInputEvent({ type: 'mouseUp', x, y, button: 'left', clickCount: 1 });
-              } catch (e) {
-                console.error('[Native Click Error]', e);
-              }
-            }
-          }
-        }
-      }
-    } catch (err) {
-      console.error('[SSE Server Link Error]', err);
-    }
-  };
-}
-```
-
-### [C] renderer.js (세션별 Preload Script 동적 작성 부분)
-각 웹뷰의 샌드박스 컨텍스트에 삽입될 프리로드 코드를 동적으로 파일로 생성합니다. 이 코드 안에는 캔버스 핑거프린팅 무력화 및 시스템 파라미터 변조(WebGL1/2, userAgentData, webdriver, chrome 등) 코드가 전역 주입됩니다.
+#### B-1. generatePreloadScript() — On-board 모드 웹뷰에 삽입되는 프리로드 스크립트 동적 생성
 
 ```javascript
 function generatePreloadScript(sessionId, isHost, isSlave) {
-  const profilesDir = path.join(__dirname, 'profiles');
-  if (!fs.existsSync(profilesDir)) {
-    fs.mkdirSync(profilesDir, { recursive: true });
-  }
-  const preloadPath = path.join(profilesDir, `preload-session-${sessionId}.js`);
-  
   const preloadJsCode = `
 (function() {
   const sessionId = ${sessionId};
@@ -113,149 +184,126 @@ function generatePreloadScript(sessionId, isHost, isSlave) {
   const isSlave = ${isSlave};
   const antiFingerprint = ${globalSettings.antiFingerprint};
   const humanJitter = ${globalSettings.humanJitter};
-  
-  // --- 1. 안티디텍트 우회 기술 구현부 ---
+
+  // ─── Anti-Fingerprint 스텔스 블록 ───
   if (antiFingerprint) {
     try {
-      const spoofScriptBlock = \\\`
-        const randomConcurrency = \\\${[2, 4, 6, 8, 12, 16][sessionId % 6]};
-        const randomMemory = \\\${[4, 8, 16][sessionId % 3]};
-        
-        Object.defineProperty(navigator, 'hardwareConcurrency', { get: () => randomConcurrency });
-        Object.defineProperty(navigator, 'deviceMemory', { get: () => randomMemory });
-        Object.defineProperty(navigator, 'webdriver', { get: () => false });
+      const spoofScriptBlock = \`
+        // CPU / RAM 위조
+        Object.defineProperty(navigator, 'hardwareConcurrency', { get: () => ${[2,4,6,8,12,16][sessionId%6]} });
+        Object.defineProperty(navigator, 'deviceMemory',        { get: () => ${[4,8,16][sessionId%3]} });
+        Object.defineProperty(navigator, 'webdriver',           { get: () => false });
 
-        // UserAgent Client Hints 모킹 (구글 봇 탐지 우회)
+        // UserAgent Client Hints 위조
         if (navigator.userAgentData) {
-          const mockUserAgentData = {
-            brands: [
-              { brand: 'Not_A Brand', version: '8' },
-              { brand: 'Chromium', version: '120' },
-              { brand: 'Google Chrome', version: '120' }
-            ],
-            mobile: false,
-            platform: 'Windows',
-            getHighEntropyValues: function(hints) {
-              return Promise.resolve({
-                brands: this.brands,
-                mobile: this.mobile,
-                platform: this.platform,
-                platformVersion: '10.0.0',
-                architecture: 'x86',
-                bitness: '64',
-                model: ''
-              });
-            }
-          };
-          Object.defineProperty(navigator, 'userAgentData', { get: () => mockUserAgentData });
+          Object.defineProperty(navigator, 'userAgentData', { get: () => ({
+            brands: [{ brand:'Not_A Brand',version:'8'},{ brand:'Chromium',version:'120'},{ brand:'Google Chrome',version:'120'}],
+            mobile: false, platform: 'Windows',
+            getHighEntropyValues: () => Promise.resolve({
+              brands: this.brands, mobile: false, platform: 'Windows',
+              platformVersion: '10.0.0', architecture: 'x86', bitness: '64', model: ''
+            })
+          }), configurable: true });
         }
 
-        // window.chrome 런타임 봇 탐지 회피
-        if (!window.chrome) {
-          window.chrome = {
-            runtime: {},
-            loadTimes: function() {},
-            csi: function() {}
-          };
-        }
+        // window.chrome 런타임 더미
+        if (!window.chrome) window.chrome = { runtime:{}, loadTimes:function(){}, csi:function(){} };
 
-        // 2D Canvas getImageData 오버라이드
-        const originalGetContext = HTMLCanvasElement.prototype.getContext;
-        HTMLCanvasElement.prototype.getContext = function(type, contextAttributes) {
-          const ctx = originalGetContext.apply(this, arguments);
+        // Canvas getContext 추적 + getImageData 픽셀 노이즈
+        const _gc = HTMLCanvasElement.prototype.getContext;
+        HTMLCanvasElement.prototype.getContext = function(type, attrs) {
+          const ctx = _gc.apply(this, arguments);
+          if ((type==='webgl'||type==='webgl2'||type==='experimental-webgl')) this._webgl = true;
           if (type === '2d' && ctx) {
-            const originalGetImageData = ctx.getImageData;
-            ctx.getImageData = function(sx, sy, sw, sh) {
-              const imageData = originalGetImageData.apply(this, arguments);
-              const data = imageData.data;
-              for (let i = 0; i < data.length; i += 4) {
-                data[i] = (data[i] + (\\\\${sessionId} % 3)) % 256;
-                data[i+1] = (data[i+1] + (\\\\${sessionId} % 2)) % 256;
+            this.__ctx2d = ctx;
+            const _gid = ctx.getImageData;
+            ctx.getImageData = function(sx,sy,sw,sh) {
+              const img = _gid.apply(this, arguments);
+              for (let i=0;i<img.data.length;i+=4) {
+                img.data[i]   = (img.data[i]   + (${sessionId}%3)) % 256;
+                img.data[i+1] = (img.data[i+1] + (${sessionId}%2)) % 256;
               }
-              return imageData;
+              return img;
             };
           }
           return ctx;
         };
 
-        // Canvas Image Export (toDataURL / toBlob) 무력화
-        // 모서리에 1% 미만의 미세 알파 투명도 픽셀 사각형을 그려 해시를 독립화시킴
-        const originalToDataURL = HTMLCanvasElement.prototype.toDataURL;
+        // toDataURL / toBlob — WebGL 캔버스 충돌 방지 처리
+        const _tdURL = HTMLCanvasElement.prototype.toDataURL;
         HTMLCanvasElement.prototype.toDataURL = function() {
-          const ctx = this.getContext('2d');
-          if (ctx) {
-            const style = ctx.fillStyle;
-            ctx.fillStyle = 'rgba(' + (\\\\${sessionId} % 3) + ',' + (\\\\${sessionId} % 2) + ',0,0.01)';
-            ctx.fillRect(0, 0, 1, 1);
-            ctx.fillStyle = style;
+          if (this.__ctx2d && !this._webgl) {
+            const s=this.__ctx2d.fillStyle;
+            this.__ctx2d.fillStyle='rgba(${sessionId%3},${sessionId%2},0,0.004)';
+            this.__ctx2d.fillRect(0,0,1,1);
+            this.__ctx2d.fillStyle=s;
           }
-          return originalToDataURL.apply(this, arguments);
+          return _tdURL.apply(this,arguments);
+        };
+        const _tBlob = HTMLCanvasElement.prototype.toBlob;
+        HTMLCanvasElement.prototype.toBlob = function(cb,...a) {
+          if (this.__ctx2d && !this._webgl) {
+            const s=this.__ctx2d.fillStyle;
+            this.__ctx2d.fillStyle='rgba(${sessionId%3},${sessionId%2},0,0.004)';
+            this.__ctx2d.fillRect(0,0,1,1);
+            this.__ctx2d.fillStyle=s;
+          }
+          return _tBlob.apply(this,[cb,...a]);
         };
 
-        const originalToBlob = HTMLCanvasElement.prototype.toBlob;
-        HTMLCanvasElement.prototype.toBlob = function(callback, ...args) {
-          const ctx = this.getContext('2d');
-          if (ctx) {
-            const style = ctx.fillStyle;
-            ctx.fillStyle = 'rgba(' + (\\\\${sessionId} % 3) + ',' + (\\\\${sessionId} % 2) + ',0,0.01)';
-            ctx.fillRect(0, 0, 1, 1);
-            ctx.fillStyle = style;
-          }
-          return originalToBlob.apply(this, [callback, ...args]);
-        };
-
-        // WebGL 1.0 및 2.0 그래픽 사양 모킹
-        const spoofWebGL = (proto) => {
-          const originalGetParameter = proto.getParameter;
-          proto.getParameter = function(parameter) {
-            if (parameter === 37446) { // UNMASKED_RENDERER_WEBGL
-              return "ANGLE (NVIDIA, NVIDIA GeForce RTX 30" + (60 + \\\\${sessionId} * 5) + " Ti Direct3D11 vs_5_0 ps_5_0)";
-            }
-            if (parameter === 37445) { // UNMASKED_VENDOR_WEBGL
-              return "Google Inc. (NVIDIA)";
-            }
-            return originalGetParameter.apply(this, arguments);
+        // WebGL 1.0 & 2.0 GPU 스펙 위조
+        const _spoof = (proto) => {
+          const _orig = proto.getParameter;
+          proto.getParameter = function(p) {
+            if (p===37446) return 'ANGLE (NVIDIA, NVIDIA GeForce RTX 30${60+sessionId*5} Ti Direct3D11 vs_5_0 ps_5_0)';
+            if (p===37445) return 'Google Inc. (NVIDIA)';
+            return _orig.apply(this,arguments);
           };
         };
-        if (typeof WebGLRenderingContext !== 'undefined') spoofWebGL(WebGLRenderingContext.prototype);
-        if (typeof WebGL2RenderingContext !== 'undefined') spoofWebGL(WebGL2RenderingContext.prototype);
-        console.log('[AMEVA Sync] Preload Anti-Fingerprint Active.');
-      \\\`;
-      const script = document.createElement('script');
-      script.textContent = spoofScriptBlock;
-      (document.head || document.documentElement).appendChild(script);
-      script.remove();
-    } catch(e) {
-      console.error('[Preload Anti-Fingerprint Error]', e);
-    }
+        if (typeof WebGLRenderingContext!=='undefined') _spoof(WebGLRenderingContext.prototype);
+        if (typeof WebGL2RenderingContext!=='undefined') _spoof(WebGL2RenderingContext.prototype);
+      \`;
+      const s = document.createElement('script');
+      s.textContent = spoofScriptBlock;
+      (document.head||document.documentElement).appendChild(s);
+      s.remove();
+    } catch(e) { console.error('[AntiFingerprint Error]', e); }
   }
 
-  // --- 2. 스크롤 및 키보드 입력 수신 동기화 구현부 ---
+  // ─── SSE 동기화 연결 (window.__ameva_sse로 노출 → 웹뷰 닫힐 때 close() 가능) ───
   const sse = new EventSource('http://127.0.0.1:8080/events?session=' + sessionId);
+  window.__ameva_sse = sse;
+
   sse.onmessage = function(event) {
     const data = JSON.parse(event.data);
     if (data.sender === sessionId) return;
 
-    if (data.type === 'scroll') {
-      if (isHost) return;
-      const maxScrollX = document.documentElement.scrollWidth - window.innerWidth;
-      const maxScrollY = document.documentElement.scrollHeight - window.innerHeight;
-      window.scrollTo({
-        left: data.percentX * maxScrollX,
-        top: data.percentY * maxScrollY,
-        behavior: humanJitter ? 'smooth' : 'auto'
-      });
-    } else if (data.type === 'keydown') {
-      if (isHost) return;
-      // 키보드 DOM 오버라이딩 & input/change 트리거 (생략)
+    if (data.type === 'scroll' && !isHost) {
+      const mX = document.documentElement.scrollWidth - window.innerWidth;
+      const mY = document.documentElement.scrollHeight - window.innerHeight;
+      window.scrollTo({ left: data.percentX*mX, top: data.percentY*mY, behavior: humanJitter?'smooth':'auto' });
+    } else if (data.type === 'keydown' && !isHost) {
+      // 키보드 이벤트 DOM 재현 + INPUT/TEXTAREA value 직접 수정
+      // ... (실제 구현 존재)
+    } else if (data.type === 'navigate') {
+      window.location.href = data.url;
+    } else if (data.type === 'reload') {
+      window.location.reload();
     }
   };
 
-  // 피드백 무한루프를 차단하기 위해, Slave 역할인 경우 이벤트 전송 리스너 미등록
+  // Slave인 경우 이벤트를 서버로 전송하는 리스너 등록하지 않음 (무한 루프 차단)
   const shouldBroadcast = !isSlave;
   if (shouldBroadcast) {
-    // scroll, click, keydown에 대해 'http://127.0.0.1:8080/broadcast' POST 전송 리스너 바인딩
+    // scroll, click, keydown 이벤트를 127.0.0.1:8080/broadcast로 POST 전송
+    // click은 isTrusted 체크하여 프로그래매틱 클릭 재전송 방지
+    window.addEventListener('scroll', /* ... */);
+    document.addEventListener('click', (e) => { if (!e.isTrusted) return; /* broadcast */ });
+    document.addEventListener('keydown', (e) => { if (!e.isTrusted) return; /* broadcast */ });
   }
+
+  // 1초마다 URL 변경 감지 → status 이벤트 서버로 보고
+  setInterval(() => { /* reportStatus() */ }, 1000);
 })();
   `;
   fs.writeFileSync(preloadPath, preloadJsCode);
@@ -263,35 +311,146 @@ function generatePreloadScript(sessionId, isHost, isSlave) {
 }
 ```
 
+#### B-2. prepareExtension() — External Mode 브라우저 확장 content.js 동적 생성
+
+```javascript
+// ★ External Mode에서 각 외부 브라우저에 로드되는 크롬 확장의 content.js를 동적으로 빌드
+// antiFingerprint 블록: navigator 조작, canvas, WebGL1+2, userAgentData, webdriver, window.chrome 위조 포함
+// 클릭 동기화: humanJitter 옵션에 따라 setTimeout(50~250ms) + ±5px 랜덤 오프셋 지터 적용
+// ★★ 주의: External Mode의 클릭은 new MouseEvent('click') 기반 JS 디스패치임 (isTrusted=false 발생)
+//           On-board 모드처럼 sendInputEvent를 쓸 수 없음. 외부 브라우저를 탭 수준에서 제어하는
+//           Electron API가 없기 때문에 이 구조상 한계는 해결 불가.
+//           해결책은 External Mode 대신 On-board Embedded Mode를 사용하는 것임.
+function prepareExtension(sessionId) {
+  // manifest v3 기반
+  // content_scripts: all_urls, run_at: document_start, all_frames: true
+  // shouldBroadcast = true (서버 측에서 Host 필터링)
+  return extDir;
+}
+```
+
+#### B-3. launchBrowserWindow() — External Mode 브라우저 프로세스 실행
+
+```javascript
+const args = [
+  `--user-data-dir=${profilePath}`,
+  `--window-size=${w},${h}`,
+  '--no-first-run',
+  '--disable-webrtc-multiple-routes',
+  '--dns-over-https-templates=https://chrome.cloudflare-dns.com/dns-query',
+  // 브라우저 타입에 따라 --inprivate 또는 --incognito 추가
+  // globalSettings.syncInput이면 --load-extension=<extDir> 추가
+  // proxy 있으면 --proxy-server=<proxy> 추가
+  // userAgent 있으면 --user-agent=<ua> 추가
+  // zoom 있으면 --force-device-scale-factor=<zoom> 추가
+];
+```
+
+#### B-4. launchEmbeddedWebview() — On-board 모드 웹뷰 생성
+
+```javascript
+function launchEmbeddedWebview(sessionId, url) {
+  // webview 생성 및 DOM 삽입
+  // partition="session-profile-{sessionId}" (persist: 없음 → 인메모리 세션, 앱 재시작 시 로그인 날아감)
+  // WebRTC IP 정책 설정:
+  session.fromPartition(`session-profile-${sessionId}`).setWebRTCIPHandlingPolicy('disable_non_proxied_udp');
+  // 프리로드 스크립트 동적 생성 후 webview.setAttribute('preload', path) 
+  // 프록시 적용: webview.getWebContents().setProxy({ proxyRules: proxy })
+  // zoom 적용: webview.setZoomFactor(zoom) on dom-ready
+}
+```
+
+#### B-5. closeEmbeddedWebview() — 웹뷰 닫기 및 리소스 정리
+
+```javascript
+function closeEmbeddedWebview(sessionId) {
+  const wv = activeWebviews[sessionId];
+  if (wv) {
+    // 웹뷰 내부의 SSE EventSource를 window.__ameva_sse.close()로 명시적 종료
+    wv.executeScript({ code: 'if (window.__ameva_sse) { window.__ameva_sse.close(); }' }).catch(() => {});
+  }
+  // DOM에서 webview-cell 제거
+  // activeWebviews[sessionId] 참조 삭제
+}
+```
+
+#### B-6. initSyncServerConnection() — 렌더러의 SSE 수신 + 네이티브 클릭 주입
+
+```javascript
+function initSyncServerConnection() {
+  const syncSse = new EventSource('http://127.0.0.1:8080/events?session=renderer');
+
+  syncSse.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+
+    if (data.type === 'status') {
+      // URL 주소창 UI 갱신 + localStorage sessionStates 저장
+    } else if (data.type === 'click') {
+      // 네이티브 마우스 클릭을 Slave 웹뷰에 주입
+      const hostId = parseInt(globalSettings.hostSession);
+      if (globalSettings.hostSlaveMode && data.sender === hostId) {
+        for (let i = 1; i <= MAX_SESSIONS; i++) {
+          if (i !== hostId && activeWebviews[i]) {
+            const rect = activeWebviews[i].getBoundingClientRect();
+            // ★ 줌 배율 보정: sendInputEvent는 물리 픽셀 기준이므로 zoomFactor로 나눔
+            const zoomFactor = sessionZoomStates[i] || 1.0;
+            const x = Math.round((data.x * rect.width) / zoomFactor);
+            const y = Math.round((data.y * rect.height) / zoomFactor);
+            // mouseDown + mouseUp = isTrusted:true 판정
+            activeWebviews[i].sendInputEvent({ type: 'mouseDown', x, y, button: 'left', clickCount: 1 });
+            activeWebviews[i].sendInputEvent({ type: 'mouseUp', x, y, button: 'left', clickCount: 1 });
+          }
+        }
+      }
+    }
+  };
+}
+```
+
+#### B-7. resetAllProfiles() — 전체 세션 초기화
+
+```javascript
+function resetAllProfiles() {
+  // 모든 창 닫기
+  closeAllLaunched();
+  setTimeout(() => {
+    // Electron 인메모리 파티션 완전 소거 (On-board 모드 세션 잔재 제거)
+    for (let i = 1; i <= MAX_SESSIONS; i++) {
+      session.fromPartition(`session-profile-${i}`).clearStorageData();
+    }
+    // 디스크 profiles/ 폴더 삭제 (External Mode 캐시)
+    fs.rmSync(path.join(__dirname, 'profiles'), { recursive: true, force: true });
+  }, 1500);
+}
+```
+
 ---
 
-## 2. 코드 보안 감사(Audit) 및 개선 의뢰 항목
+## 2. 감사 의뢰 사항 (이미 수정된 항목 외의 추가 분석 필요 사항)
 
-제시된 코드를 분석한 후 아래의 치명적 설계 한계와 예외 상황에 대응하기 위한 **구체적인 수정 제안 및 패치 코드**를 작성해 주십시오.
+아래의 추가적인 보안/아키텍처/성능 상의 문제를 분석하고 완전한 수정 코드를 제시해 주십시오.
 
-### ① 팝업 가로채기로 인한 OAuth 로그인 차단 예외 처리 (Critical)
-* **상황**: 메인 프로세스(`main.js`)에서 `web-contents-created` 및 `setWindowOpenHandler`로 모든 웹뷰의 `window.open()` 팝업을 가로채어 현재 그리드 웹뷰 프레임(`loadURL`)으로 강제 주입하고 있습니다.
-* **문제점**: 이 구조는 구글/네이버 등 간편 로그인(OAuth) 창의 작동을 불가능하게 만듭니다. OAuth 창은 일반적으로 독립된 임시 팝업 창을 띄운 뒤, 로그인이 성공하면 부모 창(`window.opener`)에 토큰을 전달하고 스스로 닫혀야(`window.close()`) 합니다. 현재 로직에서는 로그인 페이지가 동일 웹뷰 그리드 셀 내에 로드되므로 `window.opener`가 상실되고, 로그인 성공 후에도 창이 돌아오지 않아 인증 절차가 완전히 차단됩니다.
-* **해결 의뢰**: 팝업 대상 URL을 분석하여, **구글/네이버/페이스북 등 OAuth 인증 팝업이거나 로그인이 필요한 특수 창의 경우**에는 `loadURL`로 가로채지 않고, **세션 쿠키 및 격리 파티션(partition)을 공유하는 독립된 새로운 BrowserWindow(네이티브 팝업창)를 안전하게 생성하여 띄워주도록** 메인 프로세스의 핸들러 코드를 개정해 주십시오.
+### ① BrowserWindow의 nodeIntegration:true + contextIsolation:false 보안 위험 (Critical Architecture)
+- `main.js`의 `createWindow()`에서 `nodeIntegration: true`, `contextIsolation: false`로 메인 윈도우가 생성됩니다.
+- `renderer.js`가 직접 `fs`, `path`, `child_process.spawn/exec`을 사용하기 때문에 이 설정이 불가피한 상황이나, 만약 임베디드 웹뷰 내에서 XSS가 발생하고 그것이 부모 렌더러 컨텍스트에 접근 가능해진다면 전체 OS 수준의 파일 시스템 접근이 뚫립니다.
+- `nodeIntegration`을 `false`로 유지하면서 IPC(`ipcMain`/`ipcRenderer`) + `contextBridge`를 통해 필요한 노드 기능만 안전하게 노출하는 구조로 전환하는 방법과 그 비용/이득을 분석해 주십시오.
 
-### ② sendInputEvent 클릭 정밀도 및 화면 스케일 좌표 보정 (Bug)
-* **상황**: 렌더러 프로세스(`renderer.js`)에서 Host 세션 마우스 클릭 시 `clientX` / `window.innerWidth` 비율(`data.x`, `data.y`)을 받아 Slave 웹뷰의 픽셀 좌표(`Math.round(data.x * rect.width)`)로 환산하여 `sendInputEvent`를 통해 네이티브 마우스 다운/업 이벤트를 주입합니다.
-* **문제점**:
-  1. 각 웹뷰의 **줌 배율(`zoomFactor`)**이 다를 경우(예: Host 80%, Slave 120%), 브라우저 내부 좌표계와 물리 픽셀 좌표계에 차이가 생겨 마우스 클릭 좌표가 심하게 엇나갑니다.
-  2. 일렉트론 웹뷰의 CSS 패딩이나 보더 경계선 오프셋이 존재할 경우 `getBoundingClientRect()` 기준 좌표가 실제 뷰포트 내부 좌표와 오차가 발생할 수 있습니다.
-* **해결 의뢰**: 줌 스케일링 배율(`zoomFactor`) 및 디바이스 픽셀 비율(DPR)을 완벽하게 계산식에 반영하여, **서로 다른 화면 배율 상태에서도 한 치의 오차 없이 정확한 링크와 버튼을 눌러내는 좌표 보정 수식 및 렌더러 측 코드 개선안**을 제시해 주십시오.
+### ② External Mode 클릭 동기화의 근본적 한계 (Architecture Gap)
+- External Mode에서 Slave 클릭 동기화는 `new MouseEvent('click')` JS 디스패치로 구현되어 있어 `isTrusted=false`입니다. Cloudflare, Google, Kakao 등 고보안 사이트는 `isTrusted=false` 이벤트를 완전히 무시합니다.
+- Electron에서 외부 독립 프로세스 브라우저(Edge/Chrome)의 특정 탭을 제어하는 OS 레벨 API(윈도우 메시지, SendInput, AutoHotKey DLL 등)를 Python/Node.js 바인딩을 통해 우회하는 방법이 현실적으로 존재합니까? 구체적인 구현 방법과 위험성을 제시해 주십시오.
 
-### ③ Canvas 지문 우회 안정성 검사 (Stealth Bypass Check)
-* **상황**: `toDataURL` 및 `toBlob` 호출 시 2D 컨텍스트에서 임시로 알파 투명도가 들어간 `rgba` 색상을 칠하고 다시 원래 `fillStyle`로 복구합니다.
-* **문제점**: 
-  1. 만약 사이트가 캔버스 드로잉 도중 혹은 비동기 루틴에서 호출한 경우, 임시로 그린 `rgba(X,Y,0,0.01)` 사각형이 원래 그려져야 하는 2D 이미지의 픽셀 데이터를 파괴하거나 오염시킬 리스크가 존재합니까?
-  2. 3D WebGL 및 WebGPU 콘텍스트를 사용하는 캔버스에서 `toDataURL`을 시도할 때, `getContext('2d')`를 호출하거나 색상을 칠하려고 하면 브라우저 에러(컨텍스트 충돌)가 발생합니까?
-* **해결 의뢰**: 위 잠재적 오류를 완벽히 차단하고, 2D/3D 캔버스 모두에서 안전하게 컨텍스트 충돌 없이 해시값을 속이는 **안전한 Canvas 핑거프린트 우회 코드 보강안**을 제시해 주십시오.
+### ③ SSE 서버의 클라이언트 연결 유실 감지 누락 (Reliability)
+- `main.js`의 SSE 서버에서 `req.on('close')`로 연결 종료를 감지하고 `clients[sessionId]`를 삭제하지만, 네트워크 순단이나 웹뷰 crash로 인한 비정상 종료 시 half-open 연결이 `clients` 맵에 좀비로 남아 있을 수 있습니다.
+- 주기적인 heartbeat ping (`data: ping\n\n`)을 서버에서 발송하고 클라이언트가 일정 시간 응답이 없으면 연결을 강제 삭제하는 heartbeat 메커니즘 구현 코드를 작성해 주십시오.
 
-### ④ 이벤트 리스너 메모리 누수 방지 (Resource Cleanup)
-* **상황**: 그리드 레이아웃을 바꿀 때 기존 웹뷰들을 파괴하고 새 웹뷰들을 재생성합니다.
-* **문제점**: 파괴된 웹뷰와 관련된 `EventSource` (SSE 서버 연결) 인스턴스와 수많은 비표준 자바스크립트 이벤트 리스너가 메모리상에서 온전히 해제되지 않고 누수되어 가비지 컬렉터(GC)의 수거 대상에서 제외될 위험이 큽니다.
-* **해결 의뢰**: `closeEmbeddedWebview` 함수 및 레이아웃 재구성 시, **SSE 채널 연결을 명시적으로 끊고(`close()`) 돔에서 제거된 웹뷰에 묶여있던 모든 리스너와 참조 레퍼런스를 완벽하게 nullify하여 리소스를 완전히 소거하는 가이드 라인 코드**를 작성해 주십시오.
+### ④ navigator.languages 및 Permissions API 미스매치 탐지 우회 누락 (Stealth Gap)
+- 현재 프리로드 스크립트에 `navigator.languages`, `Intl.DateTimeFormat().resolvedOptions().timeZone`, `Permissions.query({ name: 'notifications' })` 반환값에 대한 위조가 없습니다.
+- Electron 기반 브라우저는 기본적으로 `navigator.languages`가 `['en-US']` 또는 시스템 언어를 반환하며, 시간대 역시 시스템 시간대를 그대로 노출합니다. 세션별로 언어 및 시간대를 다르게 설정하지 않으면 동일한 기기에서 여러 세션이 돌아가고 있음이 탐지될 수 있습니다.
+- 각 세션마다 `navigator.languages`를 다른 값으로 위조하고, Permissions API 쿼리 결과를 `prompt` 상태로 고정하는 프리로드 스크립트 추가 코드를 작성해 주십시오.
 
-이 사항들에 대해 상세히 아키텍처 관점에서 해답을 제공하고, 개정해야 하는 코드 조각들을 완전한 형태로 작성해 제안해 주십시오.
+### ⑤ 레이아웃 변경 시 복수의 SSE `initSyncServerConnection` 중복 생성 위험 (Memory Leak)
+- 현재 `initSyncServerConnection()`이 앱 초기화 시 한 번만 호출되는지, 아니면 레이아웃 변경 또는 재시작 때마다 중복 호출되는지 확인이 필요합니다.
+- `syncSse`가 전역으로 관리되지 않아 기존 SSE가 close 되지 않고 새 SSE가 추가로 연결되는 누수 패턴이 존재하는지 검토하고, 방지 코드를 제시해 주십시오.
+
+모든 항목에 대해 완전한 수정 코드 또는 구체적인 보강 방안을 작성해 주십시오.
 ```
