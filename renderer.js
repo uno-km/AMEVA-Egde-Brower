@@ -534,6 +534,29 @@ function generatePreloadScript(sessionId, isHost, isSlave) {
     }
   }, 1000);
   reportStatus();
+
+  // --- 3. amevaNative Injection ---
+  try {
+    const { contextBridge, ipcRenderer } = require('electron');
+    const nativeAPI = {
+      execCommand: function(cmd, type = "host", metaJson = "{}") {
+        console.log('[AMEVA Webview Preload] Invoking ipcRenderer ameva-native-exec:', cmd);
+        return ipcRenderer.invoke('ameva-native-exec', { cmd, type, metaJson });
+      },
+      hasGpuAccess: true,
+      runtimeId: "electron-native"
+    };
+
+    if (contextBridge) {
+      contextBridge.exposeInMainWorld('amevaNative', nativeAPI);
+      console.log('[AMEVA Preload] amevaNative exposed via contextBridge');
+    } else {
+      window.amevaNative = nativeAPI;
+      console.log('[AMEVA Preload] amevaNative exposed directly on window');
+    }
+  } catch (err) {
+    console.error('[AMEVA Preload] failed to inject amevaNative:', err);
+  }
 })();
   `;
   fs.writeFileSync(preloadPath, preloadJsCode);
@@ -1003,6 +1026,43 @@ function prepareExtension(sessionId) {
     }
   }, 1000);
   reportStatus();
+
+  // --- 3. amevaNative Injection ---
+  try {
+    const script = document.createElement('script');
+    script.textContent = \`
+      (function() {
+        window.amevaNative = {
+          execCommand: function(cmd, type = "host", metaJson = "{}") {
+            const token = sessionStorage.getItem("ameva_token") || "";
+            const headers = { "Content-Type": "application/json" };
+            if (token) {
+              headers["Authorization"] = "Bearer " + token;
+            }
+            return fetch("http://127.0.0.1:11553/exec", {
+              method: "POST",
+              headers: headers,
+              body: JSON.stringify({ command: cmd })
+            })
+            .then(res => {
+              if (!res.ok) throw new Error("HTTP error " + res.status);
+              return res.json();
+            })
+            .catch(err => {
+              return { stdout: "", stderr: err.message, exitCode: -1 };
+            });
+          },
+          hasGpuAccess: true,
+          runtimeId: "external-browser-native"
+        };
+        console.log("[AMEVA Extension] window.amevaNative injected into page context.");
+      })();
+    \`;
+    (document.head || document.documentElement).appendChild(script);
+    script.remove();
+  } catch(e) {
+    console.error('[AMEVA Extension] failed to inject amevaNative:', e);
+  }
 })();
   `;
 

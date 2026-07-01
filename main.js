@@ -226,3 +226,32 @@ app.on('window-all-closed', () => {
   }
 });
 
+// --- Electron Native Bridge for AMEVA OS ---
+const { exec } = require('child_process');
+ipcMain.handle('ameva-native-exec', async (event, { cmd, type, metaJson }) => {
+  return new Promise((resolve) => {
+    const isWin = process.platform === "win32";
+    let child;
+    if (isWin) {
+      const commandUtf16 = Buffer.from(cmd, "utf-16le");
+      const base64Command = commandUtf16.toString("base64");
+      child = exec(`powershell.exe -NoProfile -NonInteractive -EncodedCommand ${base64Command}`, { encoding: 'utf-8' });
+    } else {
+      child = exec(cmd);
+    }
+
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on('data', (data) => { stdout += data; });
+    child.stderr.on('data', (data) => { stderr += data; });
+    child.on('close', (code) => {
+      resolve({
+        stdout: stdout,
+        stderr: stderr,
+        exitCode: code
+      });
+    });
+  });
+});
+
+
