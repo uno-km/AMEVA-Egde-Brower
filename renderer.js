@@ -1378,7 +1378,7 @@ function launchEmbeddedWebview(sessionId, url) {
   if (proxy) {
     const parsed = parseProxyString(proxy);
     if (parsed) {
-      webview.addEventListener('dom-ready', () => {
+      webview?.addEventListener('dom-ready', () => {
         webview.getWebContents().setProxy({ proxyRules: parsed.rule }).then(() => {
           console.log(`[Proxy] Applied ${parsed.rule} to Session ${sessionId} webview`);
         });
@@ -1387,7 +1387,7 @@ function launchEmbeddedWebview(sessionId, url) {
   }
 
   // Set zoom on dom-ready
-  webview.addEventListener('dom-ready', () => {
+  webview?.addEventListener('dom-ready', () => {
     try {
       const zoom = sessionZoomStates[sessionId] || 0.8;
       webview.setZoomFactor(zoom);
@@ -1449,7 +1449,7 @@ function launchEmbeddedWebview(sessionId, url) {
   // Settings dropdown toggle
   const settingsBtn = webviewCell.querySelector(`#btn-webview-settings-${sessionId}`);
   const settingsDropdown = webviewCell.querySelector(`#webview-settings-dropdown-${sessionId}`);
-  settingsBtn.addEventListener('click', (e) => {
+  settingsBtn?.addEventListener('click', (e) => {
     e.stopPropagation();
     const isVisible = settingsDropdown.style.display === 'block';
     settingsDropdown.style.display = isVisible ? 'none' : 'block';
@@ -1515,7 +1515,7 @@ function launchEmbeddedWebview(sessionId, url) {
 
   // Expand / Maximize toggle
   const expandBtn = webviewCell.querySelector(`#btn-webview-expand-${sessionId}`);
-  expandBtn.addEventListener('click', (e) => {
+  expandBtn?.addEventListener('click', (e) => {
     e.stopPropagation();
     const isMaximized = webviewCell.classList.contains('maximized-cell');
     if (isMaximized) {
@@ -1539,7 +1539,7 @@ function launchEmbeddedWebview(sessionId, url) {
   });
 
   // Track active focus
-  webview.addEventListener('focus', () => {
+  webview?.addEventListener('focus', () => {
     document.querySelectorAll('.webview-cell').forEach(c => c.classList.remove('active-webview-cell'));
     webviewCell.classList.add('active-webview-cell');
   });
@@ -2088,12 +2088,12 @@ function saveSettingsFromDOM() {
 // Listeners Setup
 function initListeners() {
   // Topbar Remote Toggle
-  btnTopBarToggle.addEventListener('mouseenter', () => {
+  btnTopBarToggle?.addEventListener('mouseenter', () => {
     topRemoteBar.classList.remove('collapsed');
     btnTopBarToggle.classList.add('open');
   });
 
-  topRemoteBar.addEventListener('mouseleave', () => {
+  topRemoteBar?.addEventListener('mouseleave', () => {
     if (document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'SELECT') {
       topRemoteBar.classList.add('collapsed');
       btnTopBarToggle.classList.remove('open');
@@ -2118,19 +2118,19 @@ function initListeners() {
     }
   };
 
-  btnSidebarToggle.addEventListener('click', () => {
+  btnSidebarToggle?.addEventListener('click', () => {
     controlPanel.classList.remove('collapsed'); // open it
   });
 
-  btnSettingsToggle.addEventListener('click', () => {
+  btnSettingsToggle?.addEventListener('click', () => {
     controlPanel.classList.remove('collapsed'); // open it
   });
 
-  btnClosePanel.addEventListener('click', () => {
+  btnClosePanel?.addEventListener('click', () => {
     controlPanel.classList.add('collapsed');
   });
 
-  btnPinPanel.addEventListener('click', () => {
+  btnPinPanel?.addEventListener('click', () => {
     globalSettings.settingsPanelPinned = !globalSettings.settingsPanelPinned;
     applySidebarState();
     saveGlobalSettings();
@@ -2150,7 +2150,7 @@ function initListeners() {
   applySidebarState();
 
   // Theme change
-  themeSelect.addEventListener('change', () => {
+  themeSelect?.addEventListener('change', () => {
     applyTheme(themeSelect.value);
     saveSettingsFromDOM();
   });
@@ -2162,18 +2162,18 @@ function initListeners() {
     toggleExecutionModeContainers();
     renderSessionCards();
   };
-  modeOnboardRadio.addEventListener('change', onModeChange);
-  modeExternalRadio.addEventListener('change', onModeChange);
+  modeOnboardRadio?.addEventListener('change', onModeChange);
+  modeExternalRadio?.addEventListener('change', onModeChange);
 
   // Host-Slave mode toggle
-  hostSlaveModeCheck.addEventListener('change', () => {
+  hostSlaveModeCheck?.addEventListener('change', () => {
     hostSelectContainer.style.display = hostSlaveModeCheck.checked ? 'block' : 'none';
     saveSettingsFromDOM();
   });
-  hostSessionSelect.addEventListener('change', saveSettingsFromDOM);
+  hostSessionSelect?.addEventListener('change', saveSettingsFromDOM);
 
   // Master Address Bar Listeners
-  masterUrlInput.addEventListener('keypress', (e) => {
+  masterUrlInput?.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
       const activeCount = globalSettings.executionMode === 'onboard' 
         ? Object.keys(activeWebviews).length 
@@ -2186,9 +2186,9 @@ function initListeners() {
     }
   });
 
-  btnGo.addEventListener('click', syncNavigateAll);
-  btnReload.addEventListener('click', syncReloadAll);
-  btnFullscreenToggle.addEventListener('click', () => {
+  btnGo?.addEventListener('click', syncNavigateAll);
+  btnReload?.addEventListener('click', syncReloadAll);
+  btnFullscreenToggle?.addEventListener('click', () => {
     window.electronAPI.toggleFullscreen();
   });
 
@@ -2200,7 +2200,7 @@ function initListeners() {
   });
 
   // Global Settings Change Listener
-  const bindSave = (elem) => elem.addEventListener('change', saveSettingsFromDOM);
+  const bindSave = (elem) => elem?.addEventListener('change', saveSettingsFromDOM);
   bindSave(browserEdgeRadio);
   bindSave(browserChromeRadio);
   bindSave(zoomScaleInput);
@@ -2210,11 +2210,11 @@ function initListeners() {
   bindSave(stealthModeCheck);
   bindSave(muteAudioCheck);
 
-  zoomScaleInput.addEventListener('input', saveSettingsFromDOM);
+  zoomScaleInput?.addEventListener('input', saveSettingsFromDOM);
 
   // Quick Bookmarks Bindings
   quickBookmarkButtons.forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn?.addEventListener('click', () => {
       const url = btn.dataset.url;
       masterUrlInput.value = url;
       
@@ -2231,7 +2231,7 @@ function initListeners() {
 
   // Layout Buttons Bindings
   layoutButtons.forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn?.addEventListener('click', () => {
       layoutButtons.forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       activeLayout = btn.dataset.layout;
@@ -2244,23 +2244,23 @@ function initListeners() {
     });
   });
 
-  customColsInput.addEventListener('input', () => {
+  customColsInput?.addEventListener('input', () => {
     layoutButtons.forEach(b => b.classList.remove('active'));
     activeLayout = 'custom';
   });
-  customRowsInput.addEventListener('input', () => {
+  customRowsInput?.addEventListener('input', () => {
     layoutButtons.forEach(b => b.classList.remove('active'));
     activeLayout = 'custom';
   });
 
   // Action Buttons Bindings
-  btnLaunchGrid.addEventListener('click', launchGrid);
-  btnRealignGrid.addEventListener('click', realignGrid);
-  btnCloseAll.addEventListener('click', closeAllLaunched);
-  btnResetProfiles.addEventListener('click', resetAllProfiles);
+  btnLaunchGrid?.addEventListener('click', launchGrid);
+  btnRealignGrid?.addEventListener('click', realignGrid);
+  btnCloseAll?.addEventListener('click', closeAllLaunched);
+  btnResetProfiles?.addEventListener('click', resetAllProfiles);
 
   if (btnSaveSnapshot) {
-    btnSaveSnapshot.addEventListener('click', saveSnapshot);
+    btnSaveSnapshot?.addEventListener('click', saveSnapshot);
   }
 }
 
