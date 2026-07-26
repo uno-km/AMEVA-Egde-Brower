@@ -578,7 +578,6 @@ function generatePreloadScript(sessionId, isHost, isSlave) {
 
 // Generate the synchronization extension dynamically for each session (External Mode)
 function prepareExtension(sessionId) {
-function prepareExtension(sessionId) {
   const currentDir = window.electronAPI.getDirname();
   const baseExtDir = window.electronAPI.pathJoin(currentDir, 'profiles', 'extensions');
   const extDir = window.electronAPI.pathJoin(baseExtDir, `session-${sessionId}`);
