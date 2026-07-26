@@ -784,6 +784,22 @@ body, html {
   color: var(--text-muted);
 }
 
+.webview-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 12px;
+    background: rgba(18, 20, 32, 0.9);
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: grab;
+  }
+  
+  .webview-toolbar:active {
+    cursor: grabbing;
+  }
+
 .danger-link-btn {
   background: transparent;
   border: none;
@@ -817,17 +833,33 @@ body, html {
 #embedded-grid-container.layout-2x2 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
 #embedded-grid-container.layout-3x2 { grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 1fr 1fr; }
 
-.webview-cell {
-  background: rgba(22, 24, 37, 0.4);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  transition: all 0.25s ease;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-}
+  .webview-cell {
+    background: linear-gradient(145deg, rgba(30, 30, 36, 0.6) 0%, rgba(20, 20, 24, 0.4) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.05); border-top: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    transition: all 0.25s ease;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+    resize: both;
+    min-width: 200px;
+    min-height: 200px;
+  }
+  
+  .webview-cell.floating-mode {
+    position: absolute !important;
+    z-index: 100;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.7);
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+  
+  .webview-cell.floating-mode.dragging {
+    z-index: 1000;
+    opacity: 0.9;
+    cursor: grabbing;
+  }
 
 .webview-cell:hover {
   border-color: rgba(157, 78, 221, 0.25);

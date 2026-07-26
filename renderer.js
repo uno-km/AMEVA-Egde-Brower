@@ -1353,6 +1353,56 @@ function launchEmbeddedWebview(sessionId, url) {
 
   embeddedGridContainer.appendChild(webviewCell);
 
+  // --- Free-form Window Drag Logic ---
+  const header = webviewCell.querySelector('.webview-cell-header');
+  let isDragging = false;
+  let startX, startY, initialLeft, initialTop;
+
+  header?.addEventListener('mousedown', (e) => {
+    if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT' || e.target.closest('button')) return;
+
+    isDragging = true;
+    startX = e.clientX;
+    startY = e.clientY;
+    
+    if (!webviewCell.classList.contains('floating-mode')) {
+      const rect = webviewCell.getBoundingClientRect();
+      const parentRect = embeddedGridContainer.getBoundingClientRect();
+      webviewCell.style.left = (rect.left - parentRect.left) + 'px';
+      webviewCell.style.top = (rect.top - parentRect.top) + 'px';
+      webviewCell.style.width = rect.width + 'px';
+      webviewCell.style.height = rect.height + 'px';
+      webviewCell.classList.add('floating-mode');
+    }
+    
+    initialLeft = parseFloat(webviewCell.style.left || 0);
+    initialTop = parseFloat(webviewCell.style.top || 0);
+    webviewCell.classList.add('dragging');
+    
+    const allCells = document.querySelectorAll('.webview-cell');
+    allCells.forEach(c => { if (c !== webviewCell) c.style.zIndex = '100'; });
+    webviewCell.style.zIndex = '1000';
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    webviewCell.style.left = (initialLeft + dx) + 'px';
+    webviewCell.style.top = (initialTop + dy) + 'px';
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (isDragging) {
+      isDragging = false;
+      webviewCell.classList.remove('dragging');
+    }
+  });
+  // -----------------------------------
+
+  // Wait for React/Angular SPAs to settle before attaching
+  setTimeout(() => attachWebviewListeners(sessionId), 1500);
+
   const webview = webviewCell.querySelector('webview');
   activeWebviews[sessionId] = webview;
 
@@ -2087,6 +2137,20 @@ function saveSettingsFromDOM() {
 
 // Listeners Setup
 function initListeners() {
+  // Snap to Grid (Free-form Window Reset)
+  const btnSnapGrid = document.getElementById('btn-snap-grid');
+  btnSnapGrid?.addEventListener('click', () => {
+    const cells = document.querySelectorAll('.webview-cell');
+    cells.forEach(cell => {
+      cell.classList.remove('floating-mode');
+      cell.style.left = '';
+      cell.style.top = '';
+      cell.style.width = '';
+      cell.style.height = '';
+      cell.style.zIndex = '';
+    });
+  });
+
   // Topbar Remote Toggle
   btnTopBarToggle?.addEventListener('mouseenter', () => {
     topRemoteBar.classList.remove('collapsed');
