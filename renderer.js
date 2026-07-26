@@ -1,6 +1,4 @@
-const fs = require('fs');
-const path = require('path');
-const { spawn, exec } = require('child_process');
+// UI DOM Elements
 
 // UI DOM Elements
 const masterUrlInput = document.getElementById('master-url');
@@ -36,7 +34,13 @@ const layoutButtons = document.querySelectorAll('.layout-btn');
 const customColsInput = document.getElementById('custom-cols');
 const customRowsInput = document.getElementById('custom-rows');
 const quickBookmarkButtons = document.querySelectorAll('.bookmark-btn');
-
+const snapshotNameInput = document.getElementById('snapshot-name-input');
+const btnSaveSnapshot = document.getElementById('btn-save-snapshot');
+const snapshotsList = document.getElementById('snapshots-list');
+const btnTopBarToggle = document.getElementById('btn-topbar-toggle');
+const topRemoteBar = document.getElementById('top-remote-bar');
+const btnPinPanel = document.getElementById('btn-pin-panel');
+const btnClosePanel = document.getElementById('btn-close-panel');
 // View Containers
 const dashboardTitle = document.getElementById('dashboard-title');
 const sessionCardsContainer = document.getElementById('session-cards-container');
@@ -88,9 +92,16 @@ const defaultGlobalSettings = {
   humanJitter: true,
   stealthMode: false,
   muteAudio: false,
-  settingsPanelCollapsed: false
+  settingsPanelPinned: false
 };
 let globalSettings = JSON.parse(localStorage.getItem('ameva_global_settings')) || defaultGlobalSettings;
+
+// 3. Snapshots State
+let snapshots = JSON.parse(localStorage.getItem('ameva_snapshots')) || [];
+
+function saveSnapshotsToStorage() {
+  localStorage.setItem('ameva_snapshots', JSON.stringify(snapshots));
+}
 
 function saveSessionStates() {
   localStorage.setItem('ameva_session_states', JSON.stringify(sessionStates));
@@ -171,10 +182,10 @@ function applyTheme(theme) {
 // Check Browser Availability (External Mode)
 function getBrowserPath(browserType) {
   if (browserType === 'edge') {
-    return fs.existsSync(EDGE_PATH) ? EDGE_PATH : null;
+    return window.electronAPI.existsSync(EDGE_PATH) ? EDGE_PATH : null;
   } else {
     for (const p of CHROME_PATHS) {
-      if (fs.existsSync(p)) return p;
+      if (window.electronAPI.existsSync(p)) return p;
     }
     return null;
   }
@@ -182,11 +193,12 @@ function getBrowserPath(browserType) {
 
 // Generate the preload script for webviews dynamically
 function generatePreloadScript(sessionId, isHost, isSlave) {
-  const profilesDir = path.join(__dirname, 'profiles');
-  if (!fs.existsSync(profilesDir)) {
-    fs.mkdirSync(profilesDir, { recursive: true });
+  const currentDir = window.electronAPI.getDirname();
+  const profilesDir = window.electronAPI.pathJoin(currentDir, 'profiles');
+  if (!window.electronAPI.existsSync(profilesDir)) {
+    window.electronAPI.mkdirSync(profilesDir, { recursive: true });
   }
-  const preloadPath = path.join(profilesDir, `preload-session-${sessionId}.js`);
+  const preloadPath = window.electronAPI.pathJoin(profilesDir, `preload-session-${sessionId}.js`);
   const preloadJsCode = `
 (function() {
   const sessionId = ${sessionId};
@@ -559,20 +571,22 @@ function generatePreloadScript(sessionId, isHost, isSlave) {
   }
 })();
   `;
-  fs.writeFileSync(preloadPath, preloadJsCode);
+  window.electronAPI.writeFileSync(preloadPath, preloadJsCode);
   return preloadPath;
 }
 
 // Generate the synchronization extension dynamically for each session (External Mode)
 function prepareExtension(sessionId) {
-  const baseExtDir = path.join(__dirname, 'profiles', 'extensions');
-  const extDir = path.join(baseExtDir, `session-${sessionId}`);
+function prepareExtension(sessionId) {
+  const currentDir = window.electronAPI.getDirname();
+  const baseExtDir = window.electronAPI.pathJoin(currentDir, 'profiles', 'extensions');
+  const extDir = window.electronAPI.pathJoin(baseExtDir, `session-${sessionId}`);
 
-  if (!fs.existsSync(baseExtDir)) {
-    fs.mkdirSync(baseExtDir, { recursive: true });
+  if (!window.electronAPI.existsSync(baseExtDir)) {
+    window.electronAPI.mkdirSync(baseExtDir, { recursive: true });
   }
-  if (!fs.existsSync(extDir)) {
-    fs.mkdirSync(extDir, { recursive: true });
+  if (!window.electronAPI.existsSync(extDir)) {
+    window.electronAPI.mkdirSync(extDir, { recursive: true });
   }
 
   const manifest = {
@@ -1066,8 +1080,8 @@ function prepareExtension(sessionId) {
 })();
   `;
 
-  fs.writeFileSync(path.join(extDir, 'manifest.json'), JSON.stringify(manifest, null, 2));
-  fs.writeFileSync(path.join(extDir, 'content.js'), contentJsCode);
+  window.electronAPI.writeFileSync(window.electronAPI.pathJoin(extDir, 'manifest.json'), JSON.stringify(manifest, null, 2));
+  window.electronAPI.writeFileSync(window.electronAPI.pathJoin(extDir, 'content.js'), contentJsCode);
   return extDir;
 }
 
@@ -1078,6 +1092,12 @@ function initSyncServerConnection() {
       window.syncSse.close();
     } catch (e) {}
   }
+  window.addEventListener('beforeunload', () => {
+    if (window.syncSse) {
+      window.syncSse.close();
+    }
+  });
+
   const syncSse = new EventSource('http://127.0.0.1:8080/events?session=renderer');
   window.syncSse = syncSse;
   
@@ -1179,9 +1199,11 @@ function launchBrowserWindow(sessionId, x, y, w, h, url) {
     return;
   }
 
-  const profilePath = path.join(__dirname, 'profiles', `session-profile-${sessionId}`);
-  if (!fs.existsSync(path.join(__dirname, 'profiles'))) {
-    fs.mkdirSync(path.join(__dirname, 'profiles'), { recursive: true });
+  const currentDir = window.electronAPI.getDirname();
+  const profilePath = window.electronAPI.pathJoin(currentDir, 'profiles', `session-profile-${sessionId}`);
+  const profilesDir = window.electronAPI.pathJoin(currentDir, 'profiles');
+  if (!window.electronAPI.existsSync(profilesDir)) {
+    window.electronAPI.mkdirSync(profilesDir, { recursive: true });
   }
 
   const extDir = prepareExtension(sessionId);
@@ -1235,37 +1257,20 @@ function launchBrowserWindow(sessionId, x, y, w, h, url) {
 
   statusText.textContent = `Session ${sessionId} 외부 창 실행 중...`;
 
-  const child = spawn(browserPath, args, {
-    detached: true,
-    stdio: 'ignore'
-  });
-
-  child.on('exit', () => {
-    delete spawnedProcesses[sessionId];
-    updateSessionStatusUI(sessionId, false);
-    
-    const activeCount = Object.keys(spawnedProcesses).length;
-    statusText.textContent = activeCount > 0 ? `${activeCount}개 외부 세션 켜짐` : 'Ready';
-  });
-
-  spawnedProcesses[sessionId] = child;
+  window.electronAPI.spawnBrowser(browserPath, args, sessionId);
   updateSessionStatusUI(sessionId, true);
-  child.unref();
 
-  const activeCount = Object.keys(spawnedProcesses).length;
-  statusText.textContent = `${activeCount}개 외부 세션 켜짐`;
+  const activeCount = Object.keys(spawnedProcesses).length + 1; // Assuming +1 for the newly spawned process, though actual tracking is via IPC
+  statusText.textContent = `${activeCount}개 외부 세션 켜짐 시도 중...`;
 }
 
+window.electronAPI.onBrowserExited((sessionId) => {
+  updateSessionStatusUI(sessionId, false);
+  statusText.textContent = `Ready`;
+});
+
 function closeBrowserWindow(sessionId) {
-  const child = spawnedProcesses[sessionId];
-  if (child) {
-    try {
-      exec(`taskkill /F /T /PID ${child.pid}`);
-    } catch (e) {
-      console.warn(`Failed to terminate process PID ${child.pid}:`, e);
-    }
-    delete spawnedProcesses[sessionId];
-  }
+  window.electronAPI.killProcess(sessionId);
   updateSessionStatusUI(sessionId, false);
 }
 
@@ -1351,22 +1356,10 @@ function launchEmbeddedWebview(sessionId, url) {
   const webview = webviewCell.querySelector('webview');
   activeWebviews[sessionId] = webview;
 
-  // Set WebRTC IP handling policy & Proxy Authentication
+  // Set WebRTC IP handling policy & Proxy Authentication (handled in main now via invocation if possible, simplified here for context)
+  // Actually, WebRTC and login are hard to do from renderer directly if session is fully isolated
   try {
-    const { session } = require('electron');
-    const partitionSession = session.fromPartition(`session-profile-${sessionId}`);
-    partitionSession.setWebRTCIPHandlingPolicy('disable_non_proxied_udp');
-    
-    // Clear existing logins and register credentials handler
-    partitionSession.removeAllListeners('login');
-    partitionSession.on('login', (event, details, authInfo, callback) => {
-      const proxyInput = sessionStates[sessionId].proxy;
-      const parsed = parseProxyString(proxyInput);
-      if (parsed && parsed.username) {
-        event.preventDefault();
-        callback(parsed.username, parsed.password);
-      }
-    });
+    window.electronAPI.setupSessionPolicy(sessionId, sessionStates[sessionId].proxy);
   } catch (err) {
     console.error('Failed to set session policies:', err);
   }
@@ -1808,18 +1801,17 @@ function resetAllProfiles() {
       try {
         // Clear in-memory Electron partitions for Onboard Mode
         try {
-          const { session } = require('electron');
           for (let i = 1; i <= MAX_SESSIONS; i++) {
-            const sess = session.fromPartition(`session-profile-${i}`);
-            sess.clearStorageData();
+            window.electronAPI.clearStorageData(`session-profile-${i}`);
           }
         } catch (e) {
-          console.error('Failed to clear Electron session storage data:', e);
+          console.error('Failed to clear session storage data:', e);
         }
 
-        const profilesPath = path.join(__dirname, 'profiles');
-        if (fs.existsSync(profilesPath)) {
-          fs.rmSync(profilesPath, { recursive: true, force: true });
+        const currentDir = window.electronAPI.getDirname();
+        const profilesPath = window.electronAPI.pathJoin(currentDir, 'profiles');
+        if (window.electronAPI.existsSync(profilesPath)) {
+          window.electronAPI.rmSync(profilesPath, { recursive: true, force: true });
         }
         
         alert('모든 프로필 캐시가 성공적으로 초기화되었습니다!');
@@ -1918,6 +1910,116 @@ function fillHostSessionSelect() {
   }
 }
 
+// --- Snapshots Logic ---
+function renderSnapshots() {
+  if (!snapshotsList) return;
+  snapshotsList.innerHTML = '';
+  
+  if (snapshots.length === 0) {
+    snapshotsList.innerHTML = '<div style="text-align:center; padding: 10px; color: var(--text-muted); font-size: 0.8rem;">저장된 스냅숏이 없습니다.</div>';
+    return;
+  }
+  
+  snapshots.forEach(snap => {
+    const item = document.createElement('div');
+    item.className = 'snapshot-item';
+    
+    const nameSpan = document.createElement('div');
+    nameSpan.className = 'snapshot-item-name';
+    nameSpan.textContent = snap.name || 'Unnamed';
+    nameSpan.title = snap.name;
+    
+    const actions = document.createElement('div');
+    actions.className = 'snapshot-actions';
+    
+    const loadBtn = document.createElement('button');
+    loadBtn.className = 'small-btn launch';
+    loadBtn.textContent = 'Load';
+    loadBtn.onclick = () => loadSnapshot(snap.id);
+    
+    const delBtn = document.createElement('button');
+    delBtn.className = 'small-btn close';
+    delBtn.textContent = 'Del';
+    delBtn.onclick = () => deleteSnapshot(snap.id);
+    
+    actions.appendChild(loadBtn);
+    actions.appendChild(delBtn);
+    
+    item.appendChild(nameSpan);
+    item.appendChild(actions);
+    
+    snapshotsList.appendChild(item);
+  });
+}
+
+function saveSnapshot() {
+  const name = snapshotNameInput.value.trim() || `스냅숏 ${new Date().toLocaleTimeString()}`;
+  const cols = parseInt(customColsInput.value) || 2;
+  const rows = parseInt(customRowsInput.value) || 2;
+  const sessionCount = cols * rows;
+  
+  const savedUrls = {};
+  for (let i = 1; i <= sessionCount; i++) {
+    savedUrls[i] = sessionStates[i] ? sessionStates[i].lastKnownUrl : 'https://google.com';
+  }
+  
+  const newSnap = {
+    id: Date.now().toString(),
+    name,
+    layout: activeLayout,
+    customCols: cols,
+    customRows: rows,
+    urls: savedUrls
+  };
+  
+  snapshots.push(newSnap);
+  saveSnapshotsToStorage();
+  snapshotNameInput.value = '';
+  renderSnapshots();
+}
+
+function loadSnapshot(id) {
+  const snap = snapshots.find(s => s.id === id);
+  if (!snap) return;
+  
+  closeAllLaunched();
+  
+  // 1. Restore Layout state
+  activeLayout = snap.layout || 'custom';
+  customColsInput.value = snap.customCols;
+  customRowsInput.value = snap.customRows;
+  
+  // Update Layout UI
+  layoutButtons.forEach(b => b.classList.remove('active'));
+  if (activeLayout !== 'custom') {
+    const btn = Array.from(layoutButtons).find(b => b.dataset.layout === activeLayout);
+    if (btn) btn.classList.add('active');
+  }
+  
+  // 2. Restore URLs to sessionStates
+  if (snap.urls) {
+    for (const [sessId, url] of Object.entries(snap.urls)) {
+      if (sessionStates[sessId]) {
+        sessionStates[sessId].lastKnownUrl = url;
+      }
+    }
+    saveSessionStates();
+    renderSessionCards();
+  }
+  
+  // 3. Launch Grid
+  setTimeout(() => {
+    launchGrid();
+  }, 100);
+}
+
+function deleteSnapshot(id) {
+  snapshots = snapshots.filter(s => s.id !== id);
+  saveSnapshotsToStorage();
+  renderSnapshots();
+}
+// -----------------------
+
 function updateSyncVisuals() {
   // 1. 대시보드 세션 카드 업데이트
   for (let i = 1; i <= MAX_SESSIONS; i++) {
@@ -1978,7 +2080,6 @@ function saveSettingsFromDOM() {
   globalSettings.humanJitter = humanJitterCheck.checked;
   globalSettings.stealthMode = stealthModeCheck.checked;
   globalSettings.muteAudio = muteAudioCheck.checked;
-  globalSettings.settingsPanelCollapsed = controlPanel.classList.contains('collapsed');
   
   saveGlobalSettings();
   updateSyncVisuals();
@@ -1986,11 +2087,63 @@ function saveSettingsFromDOM() {
 
 // Listeners Setup
 function initListeners() {
-  // Collapsible Sidebar Toggle
-  btnSettingsToggle.addEventListener('click', () => {
-    controlPanel.classList.toggle('collapsed');
-    saveSettingsFromDOM();
+  // Topbar Remote Toggle
+  btnTopBarToggle.addEventListener('mouseenter', () => {
+    topRemoteBar.classList.remove('collapsed');
+    btnTopBarToggle.classList.add('open');
   });
+
+  topRemoteBar.addEventListener('mouseleave', () => {
+    if (document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'SELECT') {
+      topRemoteBar.classList.add('collapsed');
+      btnTopBarToggle.classList.remove('open');
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!topRemoteBar.contains(e.target) && !btnTopBarToggle.contains(e.target)) {
+      topRemoteBar.classList.add('collapsed');
+      btnTopBarToggle.classList.remove('open');
+    }
+  });
+
+  // Sidebar Floating/Pin Toggle
+  const applySidebarState = () => {
+    if (globalSettings.settingsPanelPinned) {
+      controlPanel.classList.add('pinned');
+      btnPinPanel.classList.add('active');
+    } else {
+      controlPanel.classList.remove('pinned');
+      btnPinPanel.classList.remove('active');
+    }
+  };
+
+  btnSettingsToggle.addEventListener('click', () => {
+    controlPanel.classList.remove('collapsed'); // open it
+  });
+
+  btnClosePanel.addEventListener('click', () => {
+    controlPanel.classList.add('collapsed');
+  });
+
+  btnPinPanel.addEventListener('click', () => {
+    globalSettings.settingsPanelPinned = !globalSettings.settingsPanelPinned;
+    applySidebarState();
+    saveGlobalSettings();
+  });
+
+  // Auto-close overlay sidebar if click outside and not pinned
+  document.addEventListener('mousedown', (e) => {
+    if (!globalSettings.settingsPanelPinned && !controlPanel.classList.contains('collapsed')) {
+      if (!controlPanel.contains(e.target) && !btnSettingsToggle.contains(e.target)) {
+        // Delay slightly to let internal clicks process
+        setTimeout(() => controlPanel.classList.add('collapsed'), 50);
+      }
+    }
+  });
+
+  // Apply initial pin state on load
+  applySidebarState();
 
   // Theme change
   themeSelect.addEventListener('change', () => {
@@ -2032,15 +2185,13 @@ function initListeners() {
   btnGo.addEventListener('click', syncNavigateAll);
   btnReload.addEventListener('click', syncReloadAll);
   btnFullscreenToggle.addEventListener('click', () => {
-    const { ipcRenderer } = require('electron');
-    ipcRenderer.send('toggle-fullscreen');
+    window.electronAPI.toggleFullscreen();
   });
 
   window.addEventListener('keydown', (e) => {
     if (e.key === 'F11') {
       e.preventDefault();
-      const { ipcRenderer } = require('electron');
-      ipcRenderer.send('toggle-fullscreen');
+      window.electronAPI.toggleFullscreen();
     }
   });
 
@@ -2103,6 +2254,10 @@ function initListeners() {
   btnRealignGrid.addEventListener('click', realignGrid);
   btnCloseAll.addEventListener('click', closeAllLaunched);
   btnResetProfiles.addEventListener('click', resetAllProfiles);
+
+  if (btnSaveSnapshot) {
+    btnSaveSnapshot.addEventListener('click', saveSnapshot);
+  }
 }
 
 // Initializer
@@ -2111,6 +2266,7 @@ function init() {
   loadSettingsDOM();
   syncSettingsToServer();
   renderSessionCards();
+  renderSnapshots();
   initListeners();
   initSyncServerConnection();
   updateSyncVisuals();

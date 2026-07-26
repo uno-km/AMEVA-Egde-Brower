@@ -7,12 +7,15 @@
 </head>
 <body>
   <div class="app-container">
+    <!-- Remote Control Trigger (Top Center) -->
+    <button id="btn-topbar-toggle" class="topbar-toggle-btn" title="주소창 리모컨 열기/닫기">▼ AMEVA Remote</button>
+
     <!-- Top Dashboard Header -->
-    <header class="dashboard-header">
+    <header class="dashboard-header collapsed" id="top-remote-bar">
       <div class="brand">
-        <button id="btn-settings-toggle" class="settings-toggle-btn" title="설정 패널 접기/열기">⚙️</button>
+        <button id="btn-settings-toggle" class="settings-toggle-btn" title="설정 패널 열기">⚙️</button>
         <span class="logo">👾 AMEVA</span>
-        <span class="badge">Launcher v3</span>
+        <span class="badge">v3</span>
       </div>
 
       <!-- Master Control Address Bar -->
@@ -37,8 +40,14 @@
       <!-- Left Collapsible Control Panel -->
       <aside id="control-panel" class="control-panel">
         <!-- Configuration Card -->
-        <div class="config-card">
-          <h3>⚙️ Global Settings</h3>
+        <div class="config-card" style="position: relative;">
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); margin-bottom: 14px; padding-bottom: 8px;">
+            <h3 style="margin: 0; border: none; padding: 0;">⚙️ Global Settings</h3>
+            <div>
+              <button id="btn-pin-panel" class="icon-btn" title="화면에 고정 (Pin)">📌</button>
+              <button id="btn-close-panel" class="icon-btn danger" title="패널 닫기">✖</button>
+            </div>
+          </div>
           
           <!-- Visual Theme Selector -->
           <div class="setting-item">
@@ -151,6 +160,18 @@
             <button id="btn-launch-grid" class="primary-btn">🚀 Launch Browser Grid</button>
             <button id="btn-realign-grid" class="secondary-btn">🎯 Re-align Grid</button>
             <button id="btn-close-all" class="danger-btn">🛑 Close All Windows</button>
+          </div>
+        </div>
+
+        <!-- Snapshots Card -->
+        <div class="config-card">
+          <h3>📸 Layout Snapshots</h3>
+          <div style="margin-bottom: 8px;">
+            <input type="text" id="snapshot-name-input" class="card-input" placeholder="스냅숏 이름 (예: 코인 4분할)" style="width: 100%;">
+            <button id="btn-save-snapshot" class="primary-btn" style="margin-top: 6px; width: 100%;">저장 (현재 레이아웃 & URL)</button>
+          </div>
+          <div id="snapshots-list" class="snapshots-container">
+            <!-- Snapshots will be dynamically injected here -->
           </div>
         </div>
 

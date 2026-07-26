@@ -41,8 +41,43 @@ body, html {
   background: radial-gradient(circle at 80% 20%, #15102a 0%, var(--bg-dark) 60%);
 }
 
-/* Top Dashboard Header */
+/* Top Dashboard Header (Remote Mode) */
+.topbar-toggle-btn {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  border-top: none;
+  color: var(--text-main);
+  padding: 4px 16px;
+  border-radius: 0 0 8px 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  z-index: 10000;
+  backdrop-filter: blur(16px);
+  transition: all 0.3s;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.topbar-toggle-btn:hover {
+  background: var(--bg-control-active);
+  color: var(--accent-cyan);
+}
+
+.topbar-toggle-btn.open {
+  top: -40px; /* Hide toggle when bar is open */
+}
+
 .dashboard-header {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  max-width: 1200px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -50,9 +85,18 @@ body, html {
   padding: 14px 20px;
   background: var(--bg-panel);
   backdrop-filter: blur(16px);
-  border-bottom: 1px solid var(--border-color);
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
-  z-index: 10;
+  border: 1px solid var(--border-color);
+  border-top: none;
+  border-radius: 0 0 16px 16px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  z-index: 9999;
+  transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.3s;
+}
+
+.dashboard-header.collapsed {
+  transform: translate(-50%, -150%);
+  opacity: 0;
+  pointer-events: none;
 }
 
 .brand {
@@ -205,7 +249,7 @@ body, html {
   background: rgba(255, 255, 255, 0.05);
 }
 
-/* Left Collapsible Control Panel */
+/* Left Collapsible Control Panel (Floating Overlay & Pinned) */
 .control-panel {
   width: 320px;
   display: flex;
@@ -214,18 +258,57 @@ body, html {
   flex-shrink: 0;
   overflow-y: auto;
   opacity: 1;
-  transition: width 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), 
-              padding 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), 
+  transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), 
               opacity 0.3s ease,
-              border 0.4s;
+              padding 0.4s;
+  background: rgba(10, 12, 18, 0.95);
+  backdrop-filter: blur(20px);
+  border-right: 1px solid var(--border-color);
+  box-shadow: 10px 0 30px rgba(0,0,0,0.5);
+  
+  /* Floating Base */
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 9998;
+  padding: 16px;
 }
 
 .control-panel.collapsed {
-  width: 0px;
-  padding: 0px;
+  transform: translateX(-110%);
   opacity: 0;
+  pointer-events: none;
+}
+
+.control-panel.pinned {
+  position: static; /* Pushes content instead of floating */
+  box-shadow: none;
+  background: transparent;
+  border-right: none;
+}
+
+.icon-btn {
+  background: transparent;
   border: none;
-  overflow: hidden;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 4px;
+  transition: all 0.2s;
+  font-size: 0.9rem;
+}
+.icon-btn:hover {
+  background: var(--bg-control-active);
+  color: var(--text-main);
+}
+.icon-btn.danger:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: var(--danger-color);
+}
+.icon-btn.active {
+  color: var(--accent-cyan);
+  background: rgba(0, 245, 212, 0.1);
 }
 
 .config-card {
@@ -421,6 +504,54 @@ body, html {
   background: var(--danger-color);
   color: white;
   border-color: var(--danger-color);
+}
+
+/* Snapshots */
+.snapshots-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 150px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.snapshots-container::-webkit-scrollbar {
+  width: 4px;
+}
+.snapshots-container::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+
+.snapshot-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+}
+
+.snapshot-item-name {
+  font-weight: 600;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 130px;
+}
+
+.snapshot-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.snapshot-actions .small-btn {
+  padding: 3px 6px;
+  font-size: 0.7rem;
 }
 
 /* Right Session Dashboard */

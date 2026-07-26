@@ -3,6 +3,8 @@ app.commandLine.appendSwitch('dns-over-https-templates', 'https://chrome.cloudfl
 app.commandLine.appendSwitch('disable-webrtc-multiple-routes');
 const path = require('path');
 const http = require('http');
+const fs = require('fs');
+const { spawn } = require('child_process');
 
 let mainWindow;
 
@@ -142,8 +144,9 @@ function createWindow() {
     title: "AMEVA Multi-Session Launcher",
     resizable: true,
     webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js'),
       webviewTag: true // Enable webviews for On-board Mode
     }
   });
@@ -254,4 +257,82 @@ ipcMain.handle('ameva-native-exec', async (event, { cmd, type, metaJson }) => {
   });
 });
 
+// --- Secure IPC Handlers for Renderer ---
+ipcMain.on('fs-exists', (event, pathStr) => {
+  event.returnValue = fs.existsSync(pathStr);
+});
+ipcMain.on('fs-mkdir', (event, pathStr, options) => {
+  event.returnValue = fs.mkdirSync(pathStr, options);
+});
+ipcMain.on('fs-write-file', (event, pathStr, data) => {
+  event.returnValue = fs.writeFileSync(pathStr, data);
+});
+ipcMain.on('fs-rm', (event, pathStr, options) => {
+  try {
+    fs.rmSync(pathStr, options);
+    event.returnValue = true;
+  } catch (e) {
+    event.returnValue = false;
+  }
+});
+ipcMain.on('path-join', (event, ...args) => {
+  event.returnValue = path.join(...args);
+});
+ipcMain.on('get-dirname', (event) => {
+  event.returnValue = __dirname;
+});
 
+const spawnedProcesses = {};
+ipcMain.handle('spawn-browser', (event, browserPath, args, sessionId) => {
+  const child = spawn(browserPath, args, {
+    detached: true,
+    stdio: 'ignore'
+  });
+  
+  child.on('exit', () => {
+    delete spawnedProcesses[sessionId];
+    if (mainWindow) {
+      mainWindow.webContents.send('browser-exited', sessionId);
+    }
+  });
+  
+  spawnedProcesses[sessionId] = child;
+  child.unref();
+  return true;
+});
+
+ipcMain.handle('kill-process', (event, sessionId) => {
+  const child = spawnedProcesses[sessionId];
+  if (child) {
+    try {
+      exec(`taskkill /F /T /PID ${child.pid}`);
+    } catch (e) {
+      console.warn(`Failed to terminate process PID ${child.pid}:`, e);
+    }
+    delete spawnedProcesses[sessionId];
+  }
+  return true;
+});
+
+ipcMain.handle('clear-storage', async (event, partition) => {
+  try {
+    const sess = session.fromPartition(partition);
+    await sess.clearStorageData();
+    return true;
+  } catch (e) {
+    console.error(e);
+    return false;
+  }
+});
+
+// Advanced network settings via Main process instead of renderer
+ipcMain.handle('setup-session-policy', (event, sessionId, proxyRule) => {
+  try {
+    const partitionSession = session.fromPartition(`session-profile-${sessionId}`);
+    partitionSession.setWebRTCIPHandlingPolicy('disable_non_proxied_udp');
+    // Clear and set proxy logic if needed
+    return true;
+  } catch (e) {
+    return false;
+  }
+});

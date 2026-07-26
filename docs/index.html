@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AMEVA Multi-Session Browser Launcher | 비즈니스 생산성의 새로운 기준</title>
+  
+  <!-- Premium Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Noto+Sans+KR:wght@300;400;700;900&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons for premium UI look -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Glowing Background Orbs -->
+  <div class="glow-orb orb-1"></div>
+  <div class="glow-orb orb-2"></div>
+  <div class="glow-orb orb-3"></div>
+
+  <!-- Header / Navigation -->
+  <header class="navbar">
+    <div class="nav-container">
+      <div class="logo">
+        <span class="logo-icon">👾</span>
+        <span class="logo-text">AMEVA</span>
+        <span class="logo-badge">OS Core</span>
+      </div>
+      <nav class="nav-links">
+        <a href="#features" class="nav-link">주요 기능</a>
+        <a href="#simulator" class="nav-link">체험 데모</a>
+        <a href="#architecture" class="nav-link">아키텍처</a>
+        <a href="https://github.com/uno-km/AMEVA-Egde-Brower" class="github-btn" target="_blank">
+          <i class="fab fa-github"></i> GitHub
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero-section">
+    <div class="hero-container">
+      <div class="badge-container">
+        <span class="hero-badge"><i class="fas fa-sparkles"></i> 2026 Next-Gen Edge Browser Launcher</span>
+      </div>
+      <h1 class="hero-title">
+        비즈니스 생산성을 혁신하는<br>
+        <span class="gradient-text">초경량 멀티세션 브라우저</span>
+      </h1>
+      <p class="hero-subtitle">
+        단 하나의 마우스 조작으로 최대 6개 이상의 격리된 세션을 동시에 제어하십시오.<br>
+        인간 모사 지터(Jitter), 완벽한 핑거프린트 우회 및 개별 프록시 탑재로 봇 탐지를 우회합니다.
+      </p>
+      
+      <div class="hero-actions">
+        <a href="#simulator" class="btn btn-primary btn-glow">
+          <i class="fas fa-play"></i> 실시간 데모 체험하기
+        </a>
+        <a href="https://github.com/uno-km/AMEVA-Egde-Brower" class="btn btn-secondary" target="_blank">
+          <i class="fas fa-book-open"></i> 개발 문서 보기
+        </a>
+      </div>
+
+      <!-- Quick Metrics -->
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-val">600%</div>
+          <div class="metric-label">작업 효율 향상</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-val">0%</div>
+          <div class="metric-label">계정 간섭/블락률</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-val">&lt; 50ms</div>
+          <div class="metric-label">이벤트 동기화 지연</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-val">100%</div>
+          <div class="metric-label">로컬 샌드박스 보안</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Interactive Live Simulator Section -->
+  <section id="simulator" class="simulator-section">
+    <div class="section-header">
+      <span class="section-tag">interactive demo</span>
+      <h2 class="section-title">살아 움직이는 AMEVA 가상 런처</h2>
+      <p class="section-desc">
+        아래의 가상 런처 패널에서 주소를 치고 Go를 누르거나, 설정을 변경하여 100% 동기화 제어 모션을 실시간으로 확인하십시오.
+      </p>
+    </div>
+
+    <!-- Simulator Container -->
+    <div class="simulator-wrapper">
+      <div class="app-launcher-mockup">
+        <!-- Window Controls -->
+        <div class="window-bar">
+          <div class="window-buttons">
+            <span class="win-btn win-close"></span>
+            <span class="win-btn win-minimize"></span>
+            <span class="win-btn win-maximize"></span>
+          </div>
+          <div class="window-title">👾 AMEVA Multi-Session Launcher (Live Simulator)</div>
+          <div class="window-spacer"></div>
+        </div>
+
+        <!-- Master Control Address Bar -->
+        <div class="mock-address-container">
+          <button class="mock-nav-toggle-btn"><i class="fas fa-cog"></i></button>
+          <div class="mock-input-wrap">
+            <span class="mock-input-protocol">https://</span>
+            <input type="text" id="sim-url" value="google.com" placeholder="이동할 URL 입력 (예: store.naver.com)" class="sim-url-input">
+          </div>
+          <button id="sim-btn-go" class="sim-go-btn">Go (Sync)</button>
+          <button id="sim-btn-reload" class="sim-nav-btn"><i class="fas fa-sync-alt"></i></button>
+          <button id="sim-btn-theme" class="sim-nav-btn" title="테마 변경"><i class="fas fa-palette"></i></button>
+        </div>
+
+        <!-- Main Workspace -->
+        <div class="mock-main-content">
+          <!-- Left Configuration Card -->
+          <aside class="mock-control-panel">
+            <div class="mock-card">
+              <h3><i class="fas fa-sliders-h"></i> Global Settings</h3>
+              
+              <div class="mock-item">
+                <label>Visual Theme</label>
+                <select id="sim-theme-select" class="mock-select">
+                  <option value="cyber">Dark Cyber (기본)</option>
+                  <option value="matrix">Matrix Green</option>
+                  <option value="glass">Aero Glass</option>
+                </select>
+              </div>
+
+              <div class="mock-item">
+                <label>Execution Mode</label>
+                <div class="mock-toggle-group">
+                  <span class="toggle-btn active" data-val="onboard">On-board</span>
+                  <span class="toggle-btn" data-val="external">External</span>
+                </div>
+              </div>
+
+              <div class="mock-item">
+                <label>Host-Slave Mode</label>
+                <div class="mock-switch-wrap">
+                  <input type="checkbox" id="sim-host-slave" checked>
+                  <span class="mock-switch"></span>
+                  <span class="switch-label">동기화 활성화</span>
+                </div>
+              </div>
+
+              <div class="mock-item">
+                <label>Anti-Fingerprint</label>
+                <div class="mock-switch-wrap">
+                  <input type="checkbox" id="sim-anti-fp" checked>
+                  <span class="mock-switch"></span>
+                  <span class="switch-label">지문 난수 위장</span>
+                </div>
+              </div>
+
+              <div class="mock-item">
+                <label>Human Jitter</label>
+                <div class="mock-switch-wrap">
+                  <input type="checkbox" id="sim-jitter" checked>
+                  <span class="mock-switch"></span>
+                  <span class="switch-label">인간 움직임 모사</span>
+                </div>
+              </div>
+
+              <div class="mock-item">
+                <label>Stealth Mode</label>
+                <div class="mock-switch-wrap">
+                  <input type="checkbox" id="sim-stealth">
+                  <span class="mock-switch"></span>
+                  <span class="switch-label">화면 은폐 실행</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Launcher Action buttons -->
+            <div class="mock-card mock-actions-card">
+              <h3><i class="fas fa-play-circle"></i> Quick Actions</h3>
+              <button id="sim-btn-play" class="sim-primary-btn"><i class="fas fa-play"></i> 자동 데모 재생</button>
+              <button id="sim-btn-realign" class="sim-secondary-btn"><i class="fas fa-th"></i> 그리드 정렬</button>
+              <div class="sim-status">
+                <span class="status-dot green"></span> Sim-Engine Online
+              </div>
+            </div>
+          </aside>
+
+          <!-- Right Grid Workspace & Webview Space -->
+          <main class="mock-session-workspace">
+            <div class="workspace-header">
+              <h3><i class="fas fa-desktop"></i> Active Session Grid (2x2 Multi-View)</h3>
+              <div class="session-sync-indicator">
+                <i class="fas fa-link animate-pulse"></i> Host-Slave Connected
+              </div>
+            </div>
+
+            <!-- Grid Container -->
+            <div class="mock-grid-container layout-2x2" id="sim-grid">
+              
+              <!-- Session Window 1 (Host) -->
+              <div class="mock-browser-win is-host" id="win-1">
+                <div class="win-header">
+                  <span class="win-badge badge-host">HOST #1</span>
+                  <span class="win-proxy"><i class="fas fa-network-wired"></i> 192.168.1.51 (KR)</span>
+                  <span class="win-controls"><i class="fas fa-times"></i></span>
+                </div>
+                <div class="win-viewport">
+                  <!-- Custom Simulated HTML Page inside Frame -->
+                  <div class="sim-page">
+                    <div class="sim-page-header">
+                      <span class="sim-shop-logo">🛍️ CyberMall</span>
+                      <div class="sim-search-bar">상품 검색...</div>
+                    </div>
+                    <div class="sim-page-content">
+                      <div class="sim-product-hero">
+                        <div class="sim-product-img">⚡</div>
+                        <div class="sim-product-details">
+                          <h4>AMEVA CORE PRO v4</h4>
+                          <p class="price">$199.00</p>
+                          <button class="sim-buy-btn">Add to Cart</button>
+                        </div>
+                      </div>
+                      <div class="sim-product-reviews">
+                        <h5>리뷰 요약</h5>
+                        <p>1. 마우스 지터 동기화가 기가막힙니다. (5/5)</p>
+                        <p>2. 프록시 세팅하니 봇 차단이 풀렸어요. (5/5)</p>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- Simulated Mouse Cursor for Host -->
+                  <div class="mock-cursor" id="cursor-host"></div>
+                </div>
+              </div>
+
+              <!-- Session Window 2 (Slave 1) -->
+              <div class="mock-browser-win is-slave" id="win-2">
+                <div class="win-header">
+                  <span class="win-badge badge-slave">SLAVE #2</span>
+                  <span class="win-proxy"><i class="fas fa-network-wired"></i> 185.220.101.4 (US)</span>
+                  <span class="win-controls"><i class="fas fa-times"></i></span>
+                </div>
+                <div class="win-viewport">
+                  <div class="sim-page">
+                    <div class="sim-page-header">
+                      <span class="sim-shop-logo">🛍️ CyberMall</span>
+                      <div class="sim-search-bar">상품 검색...</div>
+                    </div>
+                    <div class="sim-page-content">
+                      <div class="sim-product-hero">
+                        <div class="sim-product-img">⚡</div>
+                        <div class="sim-product-details">
+                          <h4>AMEVA CORE PRO v4</h4>
+                          <p class="price">$199.00</p>
+                          <button class="sim-buy-btn">Add to Cart</button>
+                        </div>
+                      </div>
+                      <div class="sim-product-reviews">
+                        <h5>리뷰 요약</h5>
+                        <p>1. 마우스 지터 동기화가 기가막힙니다. (5/5)</p>
+                        <p>2. 프록시 세팅하니 봇 차단이 풀렸어요. (5/5)</p>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- Simulated Mouse Cursor for Slave -->
+                  <div class="mock-cursor" id="cursor-slave-2"></div>
+                </div>
+              </div>
+
+              <!-- Session Window 3 (Slave 2) -->
+              <div class="mock-browser-win is-slave" id="win-3">
+                <div class="win-header">
+                  <span class="win-badge badge-slave">SLAVE #3</span>
+                  <span class="win-proxy"><i class="fas fa-network-wired"></i> 93.182.133.12 (UK)</span>
+                  <span class="win-controls"><i class="fas fa-times"></i></span>
+                </div>
+                <div class="win-viewport">
+                  <div class="sim-page">
+                    <div class="sim-page-header">
+                      <span class="sim-shop-logo">🛍️ CyberMall</span>
+                      <div class="sim-search-bar">상품 검색...</div>
+                    </div>
+                    <div class="sim-page-content">
+                      <div class="sim-product-hero">
+                        <div class="sim-product-img">⚡</div>
+                        <div class="sim-product-details">
+                          <h4>AMEVA CORE PRO v4</h4>
+                          <p class="price">$199.00</p>
+                          <button class="sim-buy-btn">Add to Cart</button>
+                        </div>
+                      </div>
+                      <div class="sim-product-reviews">
+                        <h5>리뷰 요약</h5>
+                        <p>1. 마우스 지터 동기화가 기가막힙니다. (5/5)</p>
+                        <p>2. 프록시 세팅하니 봇 차단이 풀렸어요. (5/5)</p>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- Simulated Mouse Cursor for Slave -->
+                  <div class="mock-cursor" id="cursor-slave-3"></div>
+                </div>
+              </div>
+
+              <!-- Session Window 4 (Slave 3) -->
+              <div class="mock-browser-win is-slave" id="win-4">
+                <div class="win-header">
+                  <span class="win-badge badge-slave">SLAVE #4</span>
+                  <span class="win-proxy"><i class="fas fa-network-wired"></i> 45.153.160.89 (JP)</span>
+                  <span class="win-controls"><i class="fas fa-times"></i></span>
+                </div>
+                <div class="win-viewport">
+                  <div class="sim-page">
+                    <div class="sim-page-header">
+                      <span class="sim-shop-logo">🛍️ CyberMall</span>
+                      <div class="sim-search-bar">상품 검색...</div>
+                    </div>
+                    <div class="sim-page-content">
+                      <div class="sim-product-hero">
+                        <div class="sim-product-img">⚡</div>
+                        <div class="sim-product-details">
+                          <h4>AMEVA CORE PRO v4</h4>
+                          <p class="price">$199.00</p>
+                          <button class="sim-buy-btn">Add to Cart</button>
+                        </div>
+                      </div>
+                      <div class="sim-product-reviews">
+                        <h5>리뷰 요약</h5>
+                        <p>1. 마우스 지터 동기화가 기가막힙니다. (5/5)</p>
+                        <p>2. 프록시 세팅하니 봇 차단이 풀렸어요. (5/5)</p>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- Simulated Mouse Cursor for Slave -->
+                  <div class="mock-cursor" id="cursor-slave-4"></div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Terminal Logger Console Inside Workspace -->
+            <div class="terminal-logger">
+              <div class="term-header">
+                <span class="term-title"><i class="fas fa-terminal"></i> AMEVA Safety Bypass Terminal & Debug Logger</span>
+                <span class="term-zoom"><i class="fas fa-circle green-dot"></i> Bypass Success</span>
+              </div>
+              <div class="term-body" id="sim-logs">
+                <div class="term-line">[Info] AMEVA Engine initialized. Listening Event Loop on Port 8080.</div>
+                <div class="term-line">[System] Canvas WebGL Spoofing algorithm: spoofs using salt hash...</div>
+                <div class="term-line">[Ready] Press '자동 데모 재생' on the left to start simulated scenario.</div>
+              </div>
+            </div>
+          </main>
+        </div>
+        
+        <!-- Mock Status Bar -->
+        <div class="mock-status-bar">
+          <div id="mock-status-text"><i class="fas fa-check-circle"></i> Ready - All partitions safely isolated.</div>
+          <div class="mock-footer-metrics">
+            <span>RAM Usage: 184MB</span>
+            <span>SSE Clients: 4 Active</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Core Features Section -->
+  <section id="features" class="features-section">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">Features</span>
+        <h2 class="section-title">비즈니스 가치를 배가시키는 핵심 기능</h2>
+        <p class="section-desc">단순한 브라우저 모음을 넘어, 자동화와 보안 관점의 최고 스펙을 갖추었습니다.</p>
+      </div>
+
+      <div class="features-grid">
+        <!-- Feature 1 -->
+        <div class="feature-card">
+          <div class="feature-icon"><i class="fas fa-shield-halved"></i></div>
+          <h3>100% 격리된 독자 세션</h3>
+          <p>
+            각 브라우저 인스턴스는 디렉토리 파티션이 완벽하게 독립되어 있습니다. 쿠키, 캐시, 세션 스토리지 및 로컬 데이터가 절대로 섞이지 않습니다.
+          </p>
+        </div>
+        <!-- Feature 2 -->
+        <div class="feature-card">
+          <div class="feature-icon"><i class="fas fa-arrows-spin"></i></div>
+          <h3>실시간 무지연 동기화</h3>
+          <p>
+            내장 SSE(Server-Sent Events) 프로토콜을 통하여 호스트 브라우저에서의 스크롤, 클릭, 키다운 이벤트가 슬레이브 브라우저로 지연 없이 동기화됩니다.
+          </p>
+        </div>
+        <!-- Feature 3 -->
+        <div class="feature-card">
+          <div class="feature-icon"><i class="fas fa-wand-magic-sparkles"></i></div>
+          <h3>지능형 봇 탐지 우회 (Human Jitter)</h3>
+          <p>
+            마우스 물리적 좌표가 똑같이 동기화될 경우 매크로 봇으로 감지됩니다. AMEVA는 무작위 물리 경로 지터링 및 베지에 곡선 스무딩을 적용하여 탐지를 완벽히 속입니다.
+          </p>
+        </div>
+        <!-- Feature 4 -->
+        <div class="feature-card">
+          <div class="feature-icon"><i class="fas fa-network-wired"></i></div>
+          <h3>멀티 프록시 바인딩</h3>
+          <p>
+            각 세션 프로필 카드에 프록시 서버 주소(Host:Port:User:Pass)를 손쉽게 적용하십시오. 각 창이 전 세계의 개별 고유 IP로 패킷을 전송합니다.
+          </p>
+        </div>
+        <!-- Feature 5 -->
+        <div class="feature-card">
+          <div class="feature-icon"><i class="fas fa-border-all"></i></div>
+          <h3>정밀한 바탕화면 그리드 레이아웃</h3>
+          <p>
+            Electron의 윈도우 좌표 API를 이용해, 생성된 외부 브라우저 창들을 바탕화면에 1x2, 2x2, 3x2 혹은 임의의 행렬 모양으로 픽셀 정밀도로 정렬시킵니다.
+          </p>
+        </div>
+        <!-- Feature 6 -->
+        <div class="feature-card">
+          <div class="feature-icon"><i class="fas fa-ghost"></i></div>
+          <h3>Aero Glass & 스텔스 모드</h3>
+          <p>
+            작업 화면을 가리고 백그라운드에서 실행해야 할 때는 스텔스(은폐) 모드를 활성화하십시오. 시각 리소스를 차단하여 초경량 상태로 런타임을 유지합니다.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Technical Architecture Section (Mermaid or Clean Boxes) -->
+  <section id="architecture" class="architecture-section">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">Architecture</span>
+        <h2 class="section-title">시스템 아키텍처 및 내부 구조</h2>
+        <p class="section-desc">Electron 기반의 메인 런처와 다중 격리 프로세스 간의 통신 시스템</p>
+      </div>
+
+      <div class="architecture-boxes">
+        <div class="arch-box">
+          <div class="arch-box-title">AMEVA Launcher UI (Master)</div>
+          <p>Electron Chromium 기반 메인 윈도우. 글로벌 세팅, 그리드 관리 및 HTTP/SSE 마스터 서버 작동.</p>
+        </div>
+        
+        <div class="arch-arrow"><i class="fas fa-arrow-right"></i></div>
+        
+        <div class="arch-box highlight">
+          <div class="arch-box-title">SSE Event Broadcast (Port 8080)</div>
+          <p>Host 브라우저의 마우스/키보드 이벤트 캡처 데이터 수신 후 각 Slave 브라우저로 Real-time SSE push.</p>
+        </div>
+
+        <div class="arch-arrow"><i class="fas fa-arrow-right"></i></div>
+
+        <div class="arch-box">
+          <div class="arch-box-title">Isolated Browser Instances (Slaves)</div>
+          <p>독립된 Chrome/Edge 세션. 핑거프린트 우회 및 프록시 파티션이 개별 바인딩되어 독립 실행.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Business Value / Call to action Section -->
+  <section class="cta-section">
+    <div class="container">
+      <h2>비즈니스 작업 자동화의 패러다임을 바꾸십시오.</h2>
+      <p>
+        AMEVA Multi-Session Browser Launcher는 마케팅 대행사, 다중 트래픽 검증 연구소, 애널리틱스 분석가 및 QA 테스트 업계를 위한 강력한 무기입니다.
+      </p>
+      <div class="cta-actions">
+        <a href="https://github.com/uno-km/AMEVA-Egde-Brower" class="btn btn-primary btn-glow" target="_blank">
+          <i class="fab fa-github"></i> GitHub에서 오픈소스 포크하기
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <p>© 2026 AMEVA Universe. Developed by <a href="https://github.com/uno-km" target="_blank" class="footer-link">UnoKim (uno-km)</a>. Open Source MIT License.</p>
+    </div>
+  </footer>
+
+  <!-- Script for Simulator Logic -->
+  <script src="script.js"></script>
+</body>
+</html>
