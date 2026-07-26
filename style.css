@@ -41,6 +41,35 @@ body, html {
   background: radial-gradient(circle at 80% 20%, #15102a 0%, var(--bg-dark) 60%);
 }
 
+/* Left Sidebar Floating Trigger */
+.sidebar-toggle-btn {
+  position: fixed;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  border-left: none;
+  color: var(--text-main);
+  padding: 12px 6px;
+  border-radius: 0 8px 8px 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  z-index: 9997; /* Just under the panel */
+  backdrop-filter: blur(16px);
+  transition: all 0.3s;
+  box-shadow: 4px 0 10px rgba(0, 0, 0, 0.3);
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  letter-spacing: 2px;
+}
+
+.sidebar-toggle-btn:hover {
+  background: var(--bg-control-active);
+  color: var(--accent-cyan);
+}
+
 /* Top Dashboard Header (Remote Mode) */
 .topbar-toggle-btn {
   position: fixed;

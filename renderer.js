@@ -39,6 +39,7 @@ const btnSaveSnapshot = document.getElementById('btn-save-snapshot');
 const snapshotsList = document.getElementById('snapshots-list');
 const btnTopBarToggle = document.getElementById('btn-topbar-toggle');
 const topRemoteBar = document.getElementById('top-remote-bar');
+const btnSidebarToggle = document.getElementById('btn-sidebar-toggle');
 const btnPinPanel = document.getElementById('btn-pin-panel');
 const btnClosePanel = document.getElementById('btn-close-panel');
 // View Containers
@@ -2118,6 +2119,10 @@ function initListeners() {
     }
   };
 
+  btnSidebarToggle.addEventListener('click', () => {
+    controlPanel.classList.remove('collapsed'); // open it
+  });
+
   btnSettingsToggle.addEventListener('click', () => {
     controlPanel.classList.remove('collapsed'); // open it
   });
@@ -2135,7 +2140,7 @@ function initListeners() {
   // Auto-close overlay sidebar if click outside and not pinned
   document.addEventListener('mousedown', (e) => {
     if (!globalSettings.settingsPanelPinned && !controlPanel.classList.contains('collapsed')) {
-      if (!controlPanel.contains(e.target) && !btnSettingsToggle.contains(e.target)) {
+      if (!controlPanel.contains(e.target) && !btnSettingsToggle.contains(e.target) && !btnSidebarToggle.contains(e.target)) {
         // Delay slightly to let internal clicks process
         setTimeout(() => controlPanel.classList.add('collapsed'), 50);
       }
