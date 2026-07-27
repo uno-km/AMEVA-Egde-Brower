@@ -1154,6 +1154,12 @@ function initSyncServerConnection() {
               }
             }
           }
+          // Refocus host to prevent slaves from stealing top z-index
+          setTimeout(() => {
+            if (activeWebviews[hostId]) {
+              activeWebviews[hostId].focus();
+            }
+          }, 10);
         }
       }
     } catch (err) {
@@ -1410,6 +1416,13 @@ function launchEmbeddedWebview(sessionId, url) {
 
   const webview = webviewCell.querySelector('webview');
   activeWebviews[sessionId] = webview;
+
+  // Bring window to front when webview is focused (clicked)
+  webview.addEventListener('focus', () => {
+    const allCells = document.querySelectorAll('.webview-cell');
+    allCells.forEach(c => { if (c !== webviewCell) c.style.zIndex = '100'; });
+    webviewCell.style.zIndex = '1000';
+  });
 
   // Independent URL Navigation
   const cellUrlInput = webviewCell.querySelector(`#webview-url-text-${sessionId}`);
@@ -2474,6 +2487,11 @@ function initListeners() {
 
   if (btnSaveSnapshot) {
     btnSaveSnapshot?.addEventListener('click', saveSnapshot);
+  }
+  if (snapshotNameInput) {
+    snapshotNameInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') saveSnapshot();
+    });
   }
 }
 
