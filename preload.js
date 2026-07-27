@@ -17,5 +17,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   toggleFullscreen: () => ipcRenderer.send('toggle-fullscreen'),
   
-  onOpenSettingsModal: (callback) => ipcRenderer.on('open-settings-modal', () => callback())
+  onOpenSettingsModal: (callback) => ipcRenderer.on('open-settings-modal', () => callback()),
+  
+  setOpacity: (val) => ipcRenderer.send('set-opacity', val)
 });

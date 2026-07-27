@@ -273,6 +273,13 @@ ipcMain.on('toggle-fullscreen', () => {
   }
 });
 
+ipcMain.on('set-opacity', (event, val) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win) {
+    win.setOpacity(parseFloat(val));
+  }
+});
+
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();

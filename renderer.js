@@ -15,6 +15,8 @@ const statusText = document.getElementById('status-text');
 const controlPanel = document.getElementById('control-panel');
 const btnSettingsToggle = document.getElementById('btn-settings-toggle');
 const themeSelect = document.getElementById('theme-select');
+const opacitySlider = document.getElementById('opacity-slider');
+const opacityValue = document.getElementById('opacity-value');
 const modeOnboardRadio = document.getElementById('mode-onboard');
 const modeExternalRadio = document.getElementById('mode-external');
 const browserTypeContainer = document.getElementById('browser-type-container');
@@ -2266,6 +2268,17 @@ function initListeners() {
   themeSelect?.addEventListener('change', () => {
     applyTheme(themeSelect.value);
     saveSettingsFromDOM();
+  });
+  
+  // Opacity slider
+  opacitySlider?.addEventListener('input', (e) => {
+    const val = e.target.value;
+    if (opacityValue) {
+      opacityValue.textContent = Math.round(val * 100) + '%';
+    }
+    if (window.electronAPI && window.electronAPI.setOpacity) {
+      window.electronAPI.setOpacity(val);
+    }
   });
 
   // Execution Mode toggle

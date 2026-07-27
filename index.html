@@ -30,6 +30,14 @@
                 <option value="win98">Windows 98 (레트로)</option>
               </select>
             </div>
+            
+            <div class="setting-item" style="margin-top: 24px;">
+              <span class="label">Window Opacity (창 투명도)</span>
+              <div style="display: flex; align-items: center; gap: 12px; margin-top: 10px;">
+                <input type="range" id="opacity-slider" min="0.2" max="1.0" step="0.05" value="1.0" style="flex: 1; cursor: pointer;">
+                <span id="opacity-value" style="color: var(--text-muted); font-size: 0.85rem; font-weight: 500; min-width: 40px;">100%</span>
+              </div>
+            </div>
           </div>
           <div id="tab-details" class="tab-content" style="display: none;">
             <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 20px;">상세 설정 옵션은 향후 업데이트될 예정입니다.</p>
