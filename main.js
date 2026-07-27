@@ -273,6 +273,20 @@ ipcMain.on('toggle-fullscreen', () => {
   }
 });
 
+ipcMain.on('get-window-bounds', (event) => {
+  if (mainWindow) {
+    event.returnValue = mainWindow.getBounds();
+  } else {
+    event.returnValue = null;
+  }
+});
+
+ipcMain.on('set-window-bounds', (event, bounds) => {
+  if (mainWindow && bounds) {
+    mainWindow.setBounds(bounds);
+  }
+});
+
 ipcMain.on('set-opacity', (event, val) => {
   const win = BrowserWindow.fromWebContents(event.sender);
   if (win) {

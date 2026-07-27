@@ -16,6 +16,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setupSessionPolicy: (sessionId, proxyInput) => ipcRenderer.invoke('setup-session-policy', sessionId, proxyInput),
   
   toggleFullscreen: () => ipcRenderer.send('toggle-fullscreen'),
+  getWindowBounds: () => ipcRenderer.sendSync('get-window-bounds'),
+  setWindowBounds: (bounds) => ipcRenderer.send('set-window-bounds', bounds),
   
   onOpenSettingsModal: (callback) => ipcRenderer.on('open-settings-modal', () => callback()),
   

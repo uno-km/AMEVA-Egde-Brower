@@ -570,10 +570,20 @@ function generatePreloadScript(sessionId, isHost, isSlave) {
       window.amevaNative = nativeAPI;
       console.log('[AMEVA Preload] amevaNative exposed directly on window');
     }
-  } catch (err) {
-    console.error('[AMEVA Preload] failed to inject amevaNative:', err);
-  }
-})();
+    } catch (err) {
+      console.error('[AMEVA Preload] failed to inject amevaNative:', err);
+    }
+
+    // --- 4. Zoom via Ctrl + Wheel ---
+    window.addEventListener('wheel', (e) => {
+      if (e.ctrlKey) {
+        e.preventDefault();
+        const { ipcRenderer } = require('electron');
+        ipcRenderer.sendToHost('wheel-zoom', e.deltaY);
+      }
+    }, { passive: false });
+
+  })();
   `;
   window.electronAPI.writeFileSync(preloadPath, preloadJsCode);
   return preloadPath;
@@ -1417,6 +1427,22 @@ function launchEmbeddedWebview(sessionId, url) {
   const webview = webviewCell.querySelector('webview');
   activeWebviews[sessionId] = webview;
 
+  webview.addEventListener('ipc-message', (event) => {
+    if (event.channel === 'wheel-zoom') {
+      const deltaY = event.args[0];
+      let zoom = sessionZoomStates[sessionId] || 0.8;
+      if (deltaY > 0) {
+        zoom = Math.max(0.3, parseFloat((zoom - 0.1).toFixed(1))); // Zoom out
+      } else {
+        zoom = Math.min(2.0, parseFloat((zoom + 0.1).toFixed(1))); // Zoom in
+      }
+      sessionZoomStates[sessionId] = zoom;
+      const zoomText = webviewCell.querySelector(`#zoom-text-${sessionId}`);
+      if (zoomText) zoomText.textContent = `${Math.round(zoom * 100)}%`;
+      try { webview.setZoomFactor(zoom); } catch(e) {}
+    }
+  });
+
   // Bring window to front when webview is focused (clicked)
   webview.addEventListener('focus', () => {
     const allCells = document.querySelectorAll('.webview-cell');
@@ -2039,11 +2065,20 @@ function renderSnapshots() {
 
 function saveSnapshot() {
   const name = snapshotNameInput.value.trim() || `스냅숏 ${new Date().toLocaleTimeString()}`;
-  const cols = parseInt(customColsInput.value) || 2;
-  const rows = parseInt(customRowsInput.value) || 2;
+  let cols = 2;
+  let rows = 2;
+  if (activeLayout === '1x1') { cols = 1; rows = 1; }
+  else if (activeLayout === '1x2') { cols = 2; rows = 1; }
+  else if (activeLayout === '2x2') { cols = 2; rows = 2; }
+  else if (activeLayout === '3x2') { cols = 3; rows = 2; }
+  else {
+    cols = parseInt(customColsInput.value) || 2;
+    rows = parseInt(customRowsInput.value) || 2;
+  }
   const sessionCount = cols * rows;
   
   const savedUrls = {};
+  const savedZoom = {};
   for (let i = 1; i <= sessionCount; i++) {
     savedUrls[i] = sessionStates[i] ? sessionStates[i].lastKnownUrl : 'https://google.com';
   }
