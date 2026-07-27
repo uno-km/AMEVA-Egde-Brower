@@ -143,6 +143,7 @@ function createWindow() {
     height: 800,
     title: "AMEVA Multi-Session Launcher",
     resizable: true,
+    autoHideMenuBar: true,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,

@@ -252,8 +252,8 @@ body, html {
   display: flex;
   flex: 1;
   overflow: hidden;
-  padding: 16px;
-  gap: 16px;
+  padding: 2px;
+  gap: 4px;
 }
 
 /* Settings toggle button */
@@ -604,7 +604,7 @@ body, html {
 .session-cards-container {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+  gap: 4px;
   flex: 1;
 }
 
@@ -822,7 +822,7 @@ body, html {
   display: grid;
   width: 100%;
   height: 100%;
-  gap: 14px;
+  gap: 4px;
   flex: 1;
   transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
