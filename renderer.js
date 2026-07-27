@@ -1364,6 +1364,7 @@ function launchEmbeddedWebview(sessionId, url) {
     if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT' || e.target.closest('button')) return;
 
     isDragging = true;
+    document.body.classList.add('is-dragging-window');
     startX = e.clientX;
     startY = e.clientY;
     
@@ -1397,6 +1398,7 @@ function launchEmbeddedWebview(sessionId, url) {
   document.addEventListener('mouseup', () => {
     if (isDragging) {
       isDragging = false;
+      document.body.classList.remove('is-dragging-window');
       webviewCell.classList.remove('dragging');
     }
   });

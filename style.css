@@ -1544,3 +1544,8 @@ body.theme-win98 select, body.theme-win98 input {
 .address-container .nav-btn, .address-container .go-btn {
   display: none !important;
 }
+
+/* Dragging state fix to prevent webview swallowing mouse events */
+body.is-dragging-window webview {
+  pointer-events: none !important;
+}
