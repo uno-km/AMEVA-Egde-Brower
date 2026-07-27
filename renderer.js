@@ -25,6 +25,7 @@ const browserEdgeRadio = document.getElementById('browser-edge');
 const browserChromeRadio = document.getElementById('browser-chrome');
 const zoomScaleInput = document.getElementById('zoom-scale');
 const syncInputCheck = document.getElementById('sync-input');
+const syncUrlCheck = document.getElementById('sync-url');
 const hostSlaveModeCheck = document.getElementById('host-slave-mode');
 const hostSelectContainer = document.getElementById('host-select-container');
 const hostSessionSelect = document.getElementById('host-session-select');
@@ -1119,7 +1120,7 @@ function initSyncServerConnection() {
         // Update URL display on webview header if in On-board Mode
         const webviewUrlText = document.getElementById(`webview-url-text-${id}`);
         if (webviewUrlText) {
-          webviewUrlText.textContent = data.url;
+          webviewUrlText.value = data.url;
           webviewUrlText.title = data.url;
         }
         
@@ -1314,7 +1315,7 @@ function launchEmbeddedWebview(sessionId, url) {
         <span class="session-name">Session ${sessionId}</span>
         <span class="sync-badge" id="sync-badge-${sessionId}">${syncBadgeHtml}</span>
       </div>
-      <span class="cell-url-text" id="webview-url-text-${sessionId}">Loading...</span>
+      <input type="text" class="cell-url-input" id="webview-url-text-${sessionId}" value="Loading...">
       <div class="header-right">
         <button class="small-btn webview-expand-btn" id="btn-webview-expand-${sessionId}" style="padding: 2px 6px; font-size: 0.75rem;" title="전체화면 / 격자 복귀">🔍</button>
         <button class="small-btn webview-settings-btn" id="btn-webview-settings-${sessionId}" style="padding: 2px 6px; font-size: 0.75rem;" title="세션 설정">⚙️</button>
@@ -1409,6 +1410,18 @@ function launchEmbeddedWebview(sessionId, url) {
 
   const webview = webviewCell.querySelector('webview');
   activeWebviews[sessionId] = webview;
+
+  // Independent URL Navigation
+  const cellUrlInput = webviewCell.querySelector(`#webview-url-text-${sessionId}`);
+  cellUrlInput?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      let targetUrl = cellUrlInput.value.trim();
+      if (targetUrl) {
+        if (!/^https?:\/\//i.test(targetUrl)) targetUrl = 'https://' + targetUrl;
+        webview.loadURL(targetUrl);
+      }
+    }
+  });
 
   // Set WebRTC IP handling policy & Proxy Authentication (handled in main now via invocation if possible, simplified here for context)
   // Actually, WebRTC and login are hard to do from renderer directly if session is fully isolated
@@ -1935,6 +1948,11 @@ function loadSettingsDOM() {
 
   zoomScaleInput.value = globalSettings.zoomScale;
   syncInputCheck.checked = globalSettings.syncInput;
+  if (syncUrlCheck) syncUrlCheck.checked = globalSettings.syncUrl !== false;
+  
+  if (globalSettings.syncUrl === false) document.body.classList.add('hide-master-url');
+  else document.body.classList.remove('hide-master-url');
+  
   antiFingerprintCheck.checked = !!globalSettings.antiFingerprint;
   humanJitterCheck.checked = !!globalSettings.humanJitter;
   stealthModeCheck.checked = !!globalSettings.stealthMode;
@@ -2129,6 +2147,11 @@ function saveSettingsFromDOM() {
   globalSettings.browserType = browserEdgeRadio.checked ? 'edge' : 'chrome';
   globalSettings.zoomScale = parseFloat(zoomScaleInput.value) || 0.8;
   globalSettings.syncInput = syncInputCheck.checked;
+  if (syncUrlCheck) globalSettings.syncUrl = syncUrlCheck.checked;
+  
+  if (globalSettings.syncUrl === false) document.body.classList.add('hide-master-url');
+  else document.body.classList.remove('hide-master-url');
+  
   globalSettings.hostSlaveMode = hostSlaveModeCheck.checked;
   globalSettings.hostSession = hostSessionSelect.value;
   globalSettings.antiFingerprint = antiFingerprintCheck.checked;

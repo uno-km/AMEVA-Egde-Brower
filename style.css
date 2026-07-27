@@ -1549,3 +1549,29 @@ body.theme-win98 select, body.theme-win98 input {
 body.is-dragging-window webview {
   pointer-events: none !important;
 }
+
+/* Master URL Sync Logic */
+body.hide-master-url .omnibox,
+body.hide-master-url #btn-reload,
+body.hide-master-url #btn-add-bookmark {
+  display: none !important;
+}
+
+/* Individual Cell URL Input */
+.cell-url-input {
+  flex: 1;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  color: var(--text-main);
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  margin: 0 8px;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.cell-url-input:focus {
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 5px rgba(0, 240, 255, 0.2);
+}
