@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css');
 
 :root {
   --bg-dark: #0a0a0c;
@@ -15,7 +15,7 @@
   --border-color-active: rgba(255, 255, 255, 0.2);
   --danger-color: #ef4444;
   --success-color: #10b981;
-  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-family: 'Pretendard', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 * {
@@ -54,7 +54,7 @@ body, html {
   padding: 12px 6px;
   border-radius: 0 8px 8px 0;
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 400;
   cursor: pointer;
   z-index: 9997; /* Just under the panel */
   backdrop-filter: blur(24px) saturate(150%); -webkit-backdrop-filter: blur(24px) saturate(150%);
@@ -83,7 +83,7 @@ body, html {
   padding: 4px 16px;
   border-radius: 0 0 8px 8px;
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 400;
   cursor: pointer;
   z-index: 10000;
   backdrop-filter: blur(24px) saturate(150%); -webkit-backdrop-filter: blur(24px) saturate(150%);
@@ -137,7 +137,7 @@ body, html {
 
 .logo {
   font-size: 1.3rem;
-  font-weight: 800;
+  font-weight: 500;
   background: linear-gradient(135deg, var(--accent-purple), var(--accent-cyan));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -146,7 +146,7 @@ body, html {
 
 .badge {
   font-size: 0.65rem;
-  font-weight: 600;
+  font-weight: 400;
   text-transform: uppercase;
   background: rgba(0, 245, 212, 0.12);
   color: var(--accent-cyan);
@@ -188,7 +188,7 @@ body, html {
   padding: 0 16px;
   border-radius: 12px;
   cursor: pointer;
-  font-weight: 600;
+  font-weight: 400;
   transition: all 0.2s ease;
 }
 
@@ -208,7 +208,7 @@ body, html {
   align-items: center;
   justify-content: center;
   font-size: 0.85rem;
-  font-weight: 600;
+  font-weight: 400;
   transition: all 0.2s ease;
 }
 
@@ -227,7 +227,7 @@ body, html {
 .bookmark-label {
   font-size: 0.8rem;
   color: var(--text-muted);
-  font-weight: 600;
+  font-weight: 400;
 }
 
 .bookmark-btn {
@@ -351,7 +351,7 @@ body, html {
 
 .config-card h3 {
   font-size: 0.95rem;
-  font-weight: 800;
+  font-weight: 500;
   margin-bottom: 14px;
   letter-spacing: 0.5px;
   border-bottom: 1px solid var(--border-color);
@@ -383,7 +383,7 @@ body, html {
 .setting-item .label {
   font-size: 0.8rem;
   color: var(--text-muted);
-  font-weight: 600;
+  font-weight: 400;
 }
 
 /* Toggle Group (Pill shape) */
@@ -404,7 +404,7 @@ body, html {
   text-align: center;
   padding: 6px 0;
   font-size: 0.85rem;
-  font-weight: 600;
+  font-weight: 400;
   color: var(--text-muted);
   cursor: pointer;
   border-radius: 6px;
@@ -448,7 +448,7 @@ body, html {
   padding: 8px 0;
   border-radius: 12px;
   font-family: var(--font-family);
-  font-weight: 600;
+  font-weight: 400;
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -491,7 +491,7 @@ body, html {
   padding: 10px;
   border-radius: 12px;
   cursor: pointer;
-  font-weight: 800;
+  font-weight: 500;
   font-size: 0.9rem;
   transition: all 0.2s ease;
 }
@@ -508,7 +508,7 @@ body, html {
   padding: 10px;
   border-radius: 12px;
   cursor: pointer;
-  font-weight: 600;
+  font-weight: 400;
   font-size: 0.9rem;
   transition: all 0.2s;
 }
@@ -524,7 +524,7 @@ body, html {
   padding: 10px;
   border-radius: 12px;
   cursor: pointer;
-  font-weight: 600;
+  font-weight: 400;
   font-size: 0.9rem;
   transition: all 0.2s;
 }
@@ -565,7 +565,7 @@ body, html {
 }
 
 .snapshot-item-name {
-  font-weight: 600;
+  font-weight: 400;
   color: var(--text-main);
   white-space: nowrap;
   overflow: hidden;
@@ -594,7 +594,7 @@ body, html {
 
 .sessions-dashboard h3 {
   font-size: 1rem;
-  font-weight: 800;
+  font-weight: 500;
   color: var(--text-main);
   letter-spacing: 0.5px;
   display: flex;
@@ -645,7 +645,7 @@ body, html {
 }
 
 .session-title {
-  font-weight: 800;
+  font-weight: 500;
   font-size: 0.9rem;
   display: flex;
   align-items: center;
@@ -681,7 +681,7 @@ body, html {
 .card-field-row label {
   font-size: 0.75rem;
   color: var(--text-muted);
-  font-weight: 600;
+  font-weight: 400;
 }
 
 .card-input {
@@ -741,7 +741,7 @@ body, html {
   border-radius: 6px;
   cursor: pointer;
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 400;
   transition: all 0.15s;
 }
 
@@ -792,7 +792,7 @@ body, html {
     background: rgba(18, 20, 32, 0.9);
     border-bottom: 1px solid var(--border-color);
     font-size: 0.8rem;
-    font-weight: 600;
+    font-weight: 400;
     cursor: grab;
   }
   
@@ -807,7 +807,7 @@ body, html {
   cursor: pointer;
   font-family: var(--font-family);
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 400;
   transition: all 0.2s;
 }
 
@@ -878,7 +878,7 @@ body, html {
   justify-content: space-between;
   border-bottom: 1px solid var(--border-color);
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 400;
   user-select: none;
 }
 
@@ -948,7 +948,7 @@ body.theme-green .layout-btn.active,
 body.theme-green .toggle-group input[type="radio"]:checked + label {
   background: #00ff66;
   color: black;
-  font-weight: 800;
+  font-weight: 500;
   box-shadow: 0 0 10px rgba(0, 255, 102, 0.5);
 }
 
@@ -1014,7 +1014,7 @@ body.theme-transparent .webview-cell {
   border: none;
   color: var(--text-main);
   font-size: 0.85rem;
-  font-weight: 800;
+  font-weight: 500;
   cursor: pointer;
   width: 18px;
   height: 18px;
@@ -1031,7 +1031,7 @@ body.theme-transparent .webview-cell {
 
 .zoom-text {
   font-size: 0.7rem;
-  font-weight: 600;
+  font-weight: 400;
   color: var(--accent-cyan);
   min-width: 32px;
   text-align: center;
@@ -1050,7 +1050,7 @@ body.theme-transparent .webview-cell {
 }
 
 .webview-cell-header .session-name {
-  font-weight: 800;
+  font-weight: 500;
   font-size: 0.8rem;
   color: var(--text-main);
 }
@@ -1060,7 +1060,7 @@ body.theme-transparent .webview-cell {
   background: linear-gradient(135deg, var(--accent-purple), #7b2cbf);
   color: white;
   font-size: 0.65rem;
-  font-weight: 800;
+  font-weight: 500;
   padding: 1px 6px;
   border-radius: 12px;
   border: 1px solid rgba(157, 78, 221, 0.5);
@@ -1071,7 +1071,7 @@ body.theme-transparent .webview-cell {
   background: rgba(0, 245, 212, 0.12);
   color: var(--accent-cyan);
   font-size: 0.65rem;
-  font-weight: 800;
+  font-weight: 500;
   padding: 1px 6px;
   border-radius: 12px;
   border: 1px solid rgba(0, 245, 212, 0.3);
@@ -1104,7 +1104,7 @@ body.theme-transparent .webview-cell {
   background: var(--accent-purple);
   color: white;
   font-size: 0.6rem;
-  font-weight: 800;
+  font-weight: 500;
   padding: 1px 4px;
   border-radius: 3px;
   margin-left: 6px;
@@ -1115,7 +1115,7 @@ body.theme-transparent .webview-cell {
   color: #c77dff;
   border: 1px solid rgba(157, 78, 221, 0.3);
   font-size: 0.6rem;
-  font-weight: 800;
+  font-weight: 500;
   padding: 0 4px;
   border-radius: 3px;
   margin-left: 6px;
@@ -1162,7 +1162,7 @@ body.theme-transparent .primary-btn {
 .webview-settings-dropdown .setting-row label {
   font-size: 0.75rem;
   color: var(--text-muted);
-  font-weight: 600;
+  font-weight: 400;
 }
 
 .webview-settings-dropdown .card-input,
@@ -1185,7 +1185,7 @@ body.theme-transparent .primary-btn {
 .webview-settings-dropdown .apply-btn {
   background: var(--accent-cyan);
   color: var(--bg-dark);
-  font-weight: bold;
+  font-weight: 500;
 }
 
 .webview-settings-dropdown .cancel-btn {
@@ -1203,5 +1203,6 @@ body.theme-transparent .primary-btn {
   border-color: var(--accent-cyan) !important;
   box-shadow: 0 0 25px rgba(0, 245, 212, 0.4) !important;
 }
+
 
 
