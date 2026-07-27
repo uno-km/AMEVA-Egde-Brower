@@ -176,7 +176,7 @@ function parseProxyString(proxyStr) {
 
 // Apply visual theme to document body
 function applyTheme(theme) {
-  document.body.classList.remove('theme-dark', 'theme-green', 'theme-transparent');
+  document.body.classList.remove('theme-dark', 'theme-green', 'theme-transparent', 'theme-win98');
   document.body.classList.add(`theme-${theme}`);
 }
 
@@ -2134,6 +2134,55 @@ function saveSettingsFromDOM() {
   saveGlobalSettings();
   updateSyncVisuals();
 }
+
+// --- Settings Modal Logic ---
+const settingsModal = document.getElementById('settings-modal');
+const btnCloseModal = document.getElementById('btn-close-modal');
+const modalTabs = document.querySelectorAll('.modal-tab');
+const tabContents = document.querySelectorAll('.tab-content');
+
+function openSettingsModal() {
+  if (settingsModal) {
+    settingsModal.style.display = 'flex';
+    setTimeout(() => settingsModal.classList.add('show'), 10);
+  }
+}
+
+function closeSettingsModal() {
+  if (settingsModal) {
+    settingsModal.classList.remove('show');
+    setTimeout(() => settingsModal.style.display = 'none', 300);
+  }
+}
+
+if (window.electronAPI && window.electronAPI.onOpenSettingsModal) {
+  window.electronAPI.onOpenSettingsModal(openSettingsModal);
+}
+
+btnCloseModal?.addEventListener('click', closeSettingsModal);
+settingsModal?.addEventListener('mousedown', (e) => {
+  if (e.target === settingsModal) {
+    closeSettingsModal();
+  }
+});
+
+modalTabs.forEach(tab => {
+  tab.addEventListener('click', () => {
+    modalTabs.forEach(t => t.classList.remove('active'));
+    tabContents.forEach(c => {
+      c.classList.remove('active');
+      c.style.display = 'none';
+    });
+    
+    tab.classList.add('active');
+    const targetId = 'tab-' + tab.getAttribute('data-tab');
+    const target = document.getElementById(targetId);
+    if (target) {
+      target.classList.add('active');
+      target.style.display = 'block';
+    }
+  });
+});
 
 // Listeners Setup
 function initListeners() {

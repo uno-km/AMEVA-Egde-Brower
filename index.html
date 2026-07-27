@@ -7,6 +7,36 @@
 </head>
 <body>
   <div class="app-container">
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal-overlay" style="display: none;">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Settings</h2>
+          <button id="btn-close-modal" class="icon-btn danger" title="Close">✖</button>
+        </div>
+        <div class="modal-tabs">
+          <button class="modal-tab active" data-tab="visual">🎨 Visual Theme</button>
+          <button class="modal-tab" data-tab="details">⚙️ Detailed Settings</button>
+        </div>
+        <div class="modal-body">
+          <div id="tab-visual" class="tab-content active">
+            <div class="setting-item" style="margin-top: 20px;">
+              <span class="label">Visual Theme (테마)</span>
+              <select id="theme-select" class="card-select" style="margin-top: 10px;">
+                <option value="dark">Dark Cyber (기본)</option>
+                <option value="green">Matrix Green (해커)</option>
+                <option value="transparent">Aero Glass (투명)</option>
+                <option value="win98">Windows 98 (레트로)</option>
+              </select>
+            </div>
+          </div>
+          <div id="tab-details" class="tab-content" style="display: none;">
+            <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 20px;">상세 설정 옵션은 향후 업데이트될 예정입니다.</p>
+          </div>
+        </div>
+      </div>
+    </div>
     <!-- Left Sidebar Trigger (Middle Left) -->
     <button id="btn-sidebar-toggle" class="sidebar-toggle-btn" title="설정 패널 열기">▶ Settings</button>
 
@@ -53,15 +83,7 @@
             </div>
           </div>
           
-          <!-- Visual Theme Selector -->
-          <div class="setting-item">
-            <span class="label">Visual Theme (테마)</span>
-            <select id="theme-select" class="card-select">
-              <option value="dark">Dark Cyber (기본)</option>
-              <option value="green">Matrix Green (해커)</option>
-              <option value="transparent">Aero Glass (투명)</option>
-            </select>
-          </div>
+          <!-- Visual Theme Selector Moved to Modal -->
 
           <!-- Execution Mode Toggle -->
           <div class="setting-item">

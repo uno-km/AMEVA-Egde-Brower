@@ -363,7 +363,7 @@ body, html {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 .setting-item.checkbox-item {
@@ -438,7 +438,7 @@ body, html {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 .layout-btn-group .layout-btn {
@@ -1205,4 +1205,169 @@ body.theme-transparent .primary-btn {
 }
 
 
+
+
+/* --- Settings Modal --- */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.modal-overlay.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.modal-content {
+  background: var(--bg-control);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  width: 500px;
+  max-width: 90vw;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+  transform: translateY(-20px) scale(0.95);
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  overflow: hidden;
+}
+
+.modal-overlay.show .modal-content {
+  transform: translateY(0) scale(1);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border-color);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.modal-header h2 {
+  font-size: 1.2rem;
+  font-weight: 500;
+  margin: 0;
+}
+
+.modal-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border-color);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.modal-tab {
+  flex: 1;
+  padding: 12px 0;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-family: var(--font-family);
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-bottom: 2px solid transparent;
+}
+
+.modal-tab:hover {
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.modal-tab.active {
+  color: var(--accent-cyan);
+  border-bottom: 2px solid var(--accent-cyan);
+  font-weight: 500;
+}
+
+.modal-body {
+  padding: 24px;
+  min-height: 250px;
+}
+
+
+/* --- Windows 98 Retro Theme --- */
+body.theme-win98 {
+  --bg-dark: #008080;
+  --bg-panel: #c0c0c0;
+  --bg-control: #c0c0c0;
+  --bg-control-active: #dfdfdf;
+  --border-color: #dfdfdf;
+  --text-main: #000;
+  --text-muted: #333;
+  --font-family: 'Tahoma', 'MS Sans Serif', sans-serif;
+}
+
+body.theme-win98 * {
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  border-radius: 0 !important;
+}
+
+body.theme-win98 .control-panel,
+body.theme-win98 .webview-cell,
+body.theme-win98 .modal-content {
+  background: #c0c0c0 !important;
+  border-top: 1px solid #fff !important;
+  border-left: 1px solid #fff !important;
+  border-right: 1px solid #808080 !important;
+  border-bottom: 1px solid #808080 !important;
+  box-shadow: inset -1px -1px #0a0a0a, inset 1px 1px #dfdfdf !important;
+  color: #000;
+}
+
+body.theme-win98 .dashboard-header,
+body.theme-win98 .webview-toolbar,
+body.theme-win98 .modal-header {
+  background: linear-gradient(90deg, #000080, #1084d0) !important;
+  color: white !important;
+  border: none !important;
+}
+
+body.theme-win98 .dashboard-header .logo,
+body.theme-win98 .dashboard-header h2,
+body.theme-win98 .webview-cell-header .session-name,
+body.theme-win98 .modal-header h2 {
+  color: white !important;
+  -webkit-text-fill-color: white !important;
+}
+
+body.theme-win98 button {
+  background: #c0c0c0 !important;
+  border-top: 1px solid #fff !important;
+  border-left: 1px solid #fff !important;
+  border-right: 1px solid #808080 !important;
+  border-bottom: 1px solid #808080 !important;
+  box-shadow: inset -1px -1px #0a0a0a, inset 1px 1px #dfdfdf !important;
+  color: #000 !important;
+  padding: 4px 8px !important;
+}
+
+body.theme-win98 button:active {
+  border-top: 1px solid #808080 !important;
+  border-left: 1px solid #808080 !important;
+  border-right: 1px solid #fff !important;
+  border-bottom: 1px solid #fff !important;
+  box-shadow: inset 1px 1px #0a0a0a, inset -1px -1px #dfdfdf !important;
+}
+
+body.theme-win98 .modal-tab.active {
+  background: #dfdfdf !important;
+  border-bottom: 1px solid #dfdfdf !important;
+  color: #000 !important;
+}
+
+body.theme-win98 select, body.theme-win98 input {
+  background: #fff !important;
+  border: inset 2px #dfdfdf !important;
+  color: #000 !important;
+}
 

@@ -15,5 +15,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   clearStorageData: (partition) => ipcRenderer.invoke('clear-storage', partition),
   setupSessionPolicy: (sessionId, proxyInput) => ipcRenderer.invoke('setup-session-policy', sessionId, proxyInput),
   
-  toggleFullscreen: () => ipcRenderer.send('toggle-fullscreen')
+  toggleFullscreen: () => ipcRenderer.send('toggle-fullscreen'),
+  
+  onOpenSettingsModal: (callback) => ipcRenderer.on('open-settings-modal', () => callback())
 });
