@@ -2236,7 +2236,7 @@ function initListeners() {
   });
 
   btnSettingsToggle?.addEventListener('click', () => {
-    controlPanel.classList.remove('collapsed'); // open it
+    openSettingsModal();
   });
 
   btnClosePanel?.addEventListener('click', () => {
