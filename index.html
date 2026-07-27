@@ -18,6 +18,7 @@
         <div class="modal-tabs">
           <button class="modal-tab active" data-tab="visual">🎨 Visual Theme</button>
           <button class="modal-tab" data-tab="details">⚙️ Detailed Settings</button>
+          <button class="modal-tab" data-tab="snapshots">📸 Snapshots</button>
         </div>
         <div class="modal-body">
           <div id="tab-visual" class="tab-content active">
@@ -42,6 +43,10 @@
           <div id="tab-details" class="tab-content" style="display: none;">
             <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 20px;">상세 설정 옵션은 향후 업데이트될 예정입니다.</p>
           </div>
+          <div id="tab-snapshots" class="tab-content" style="display: none;">
+            <!-- Snapshots Editor Container -->
+            <div id="modal-snapshots-container"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -49,7 +54,7 @@
     <button id="btn-sidebar-toggle" class="sidebar-toggle-btn" title="설정 패널 열기">▶ Settings</button>
 
     <!-- Remote Control Trigger (Top Center) -->
-    <button id="btn-topbar-toggle" class="topbar-toggle-btn" title="주소창 리모컨 열기/닫기">▼ AMEVA Remote</button>
+    <button id="btn-topbar-toggle" class="topbar-toggle-btn" title="주소창 리모컨 열기/닫기">▼</button>
 
     <!-- Top Dashboard Header -->
     <header class="dashboard-header collapsed" id="top-remote-bar">
@@ -185,6 +190,12 @@
           <div class="setting-item checkbox-item" id="stealth-mode-container">
             <input type="checkbox" id="stealth-mode">
             <label for="stealth-mode">👻 Stealth Mode (화면 은폐 실행)</label>
+          </div>
+
+          <!-- Private Mode -->
+          <div class="setting-item checkbox-item">
+            <input type="checkbox" id="private-mode">
+            <label for="private-mode">🕵️ Private Mode (해킹용 - 쿠키/세션 초기화)</label>
           </div>
 
           <!-- Mute Audio -->

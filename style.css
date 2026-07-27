@@ -92,8 +92,7 @@ body, html {
 }
 
 .topbar-toggle-btn:hover {
-  background: var(--bg-control-active);
-  color: var(--accent-cyan);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .topbar-toggle-btn.open {
@@ -1574,4 +1573,63 @@ body.hide-master-url #btn-add-bookmark {
 .cell-url-input:focus {
   border-color: var(--accent-cyan);
   box-shadow: 0 0 5px rgba(0, 240, 255, 0.2);
+}
+
+/* Snapshot Editor in Settings Modal */
+.modal-snapshot-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  background: rgba(0,0,0,0.2);
+  border-radius: 6px;
+  margin-bottom: 8px;
+  border: 1px solid var(--border-color);
+}
+.modal-snapshot-name {
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+.modal-snapshot-actions {
+  display: flex;
+  gap: 8px;
+}
+.snapshot-editor-form {
+  padding: 15px;
+  background: rgba(0,0,0,0.3);
+  border-radius: 6px;
+  border: 1px dashed var(--border-color);
+}
+.snapshot-editor-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+.snapshot-editor-row label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-weight: bold;
+}
+.snapshot-editor-row input {
+  background: var(--bg-body);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  padding: 8px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+.snapshot-editor-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 15px;
+}
+.small-btn.edit {
+  background: rgba(255, 165, 0, 0.2);
+  border-color: rgba(255, 165, 0, 0.5);
+  color: orange;
+}
+.small-btn.edit:hover {
+  background: rgba(255, 165, 0, 0.3);
 }

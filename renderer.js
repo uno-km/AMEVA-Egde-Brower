@@ -33,6 +33,7 @@ const antiFingerprintCheck = document.getElementById('anti-fingerprint');
 const humanJitterCheck = document.getElementById('human-jitter');
 const stealthModeCheck = document.getElementById('stealth-mode');
 const muteAudioCheck = document.getElementById('mute-audio');
+const privateModeCheck = document.getElementById('private-mode');
 const layoutButtons = document.querySelectorAll('.layout-btn');
 const customColsInput = document.getElementById('custom-cols');
 const customRowsInput = document.getElementById('custom-rows');
@@ -96,6 +97,7 @@ const defaultGlobalSettings = {
   humanJitter: true,
   stealthMode: false,
   muteAudio: false,
+  privateMode: false,
   settingsPanelPinned: false
 };
 let globalSettings = JSON.parse(localStorage.getItem('ameva_global_settings')) || defaultGlobalSettings;
@@ -1129,7 +1131,7 @@ function initSyncServerConnection() {
 
         // Update URL display on webview header if in On-board Mode
         const webviewUrlText = document.getElementById(`webview-url-text-${id}`);
-        if (webviewUrlText) {
+        if (webviewUrlText && document.activeElement !== webviewUrlText) {
           webviewUrlText.value = data.url;
           webviewUrlText.title = data.url;
         }
@@ -1237,10 +1239,12 @@ function launchBrowserWindow(sessionId, x, y, w, h, url) {
     '--dns-over-https-templates=https://chrome.cloudflare-dns.com/dns-query'
   ];
 
-  if (browserType === 'edge') {
-    args.push('--inprivate');
-  } else {
-    args.push('--incognito');
+  if (globalSettings.privateMode) {
+    if (browserType === 'edge') {
+      args.push('--inprivate');
+    } else {
+      args.push('--incognito');
+    }
   }
 
   if (globalSettings.syncInput) {
@@ -1367,7 +1371,7 @@ function launchEmbeddedWebview(sessionId, url) {
         <button class="small-btn cancel-btn" id="btn-grid-cancel-${sessionId}" style="padding: 4px 10px;">닫기</button>
       </div>
     </div>
-    <webview id="webview-${sessionId}" partition="session-profile-${sessionId}" allowpopups></webview>
+    <webview id="webview-${sessionId}" partition="${globalSettings.privateMode ? '' : 'persist:'}session-profile-${sessionId}" allowpopups></webview>
   `;
 
   embeddedGridContainer.appendChild(webviewCell);
@@ -1500,6 +1504,27 @@ function launchEmbeddedWebview(sessionId, url) {
     } catch (e) {
       console.warn('Failed to set zoom factor:', e);
     }
+  });
+
+  // Native Webview Navigation Listeners (bypasses CSP issues that block SSE)
+  webview?.addEventListener('did-navigate', (event) => {
+    const urlText = document.getElementById(`webview-url-text-${sessionId}`);
+    if (urlText && document.activeElement !== urlText) {
+      urlText.value = event.url;
+      urlText.title = event.url;
+    }
+    sessionStates[sessionId].lastKnownUrl = event.url;
+    saveSessionStates();
+  });
+
+  webview?.addEventListener('did-navigate-in-page', (event) => {
+    const urlText = document.getElementById(`webview-url-text-${sessionId}`);
+    if (urlText && document.activeElement !== urlText) {
+      urlText.value = event.url;
+      urlText.title = event.url;
+    }
+    sessionStates[sessionId].lastKnownUrl = event.url;
+    saveSessionStates();
   });
 
   // Prepend protocol
@@ -1909,6 +1934,7 @@ function resetAllProfiles() {
         try {
           for (let i = 1; i <= MAX_SESSIONS; i++) {
             window.electronAPI.clearStorageData(`session-profile-${i}`);
+            window.electronAPI.clearStorageData(`persist:session-profile-${i}`);
           }
         } catch (e) {
           console.error('Failed to clear session storage data:', e);
@@ -1996,6 +2022,7 @@ function loadSettingsDOM() {
   humanJitterCheck.checked = !!globalSettings.humanJitter;
   stealthModeCheck.checked = !!globalSettings.stealthMode;
   muteAudioCheck.checked = globalSettings.muteAudio;
+  if (privateModeCheck) privateModeCheck.checked = !!globalSettings.privateMode;
 
   // Sidebar collapse status
   if (globalSettings.settingsPanelCollapsed) {
@@ -2061,6 +2088,10 @@ function renderSnapshots() {
     
     snapshotsList.appendChild(item);
   });
+  
+  if (typeof renderModalSnapshots === 'function') {
+    renderModalSnapshots();
+  }
 }
 
 function saveSnapshot() {
@@ -2080,7 +2111,23 @@ function saveSnapshot() {
   const savedUrls = {};
   const savedZoom = {};
   for (let i = 1; i <= sessionCount; i++) {
-    savedUrls[i] = sessionStates[i] ? sessionStates[i].lastKnownUrl : 'https://google.com';
+    let currentInputUrl = null;
+    if (globalSettings.executionMode === 'onboard') {
+      const wv = activeWebviews[i];
+      if (wv) {
+        try { currentInputUrl = wv.getURL(); } catch(e) {}
+      }
+      
+      const urlInput = document.getElementById(`webview-url-text-${i}`);
+      if (!currentInputUrl && urlInput && urlInput.value.trim() !== '') {
+        currentInputUrl = urlInput.value.trim();
+      }
+      
+      if (currentInputUrl && !/^https?:\/\//i.test(currentInputUrl)) {
+        currentInputUrl = 'https://' + currentInputUrl;
+      }
+    }
+    savedUrls[i] = currentInputUrl || (sessionStates[i] ? sessionStates[i].lastKnownUrl : 'https://google.com');
   }
   
   const newSnap = {
@@ -2098,6 +2145,116 @@ function saveSnapshot() {
   renderSnapshots();
   renderBookmarks();
 }
+
+function renderModalSnapshots() {
+  const modalContainer = document.getElementById('modal-snapshots-container');
+  if (!modalContainer) return;
+  
+  if (snapshots.length === 0) {
+    modalContainer.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--text-muted);">저장된 스냅숏이 없습니다.</div>';
+    return;
+  }
+  
+  modalContainer.innerHTML = '';
+  snapshots.forEach(snap => {
+    const item = document.createElement('div');
+    item.className = 'modal-snapshot-item';
+    
+    const nameSpan = document.createElement('div');
+    nameSpan.className = 'modal-snapshot-name';
+    nameSpan.textContent = snap.name || 'Unnamed';
+    
+    const actions = document.createElement('div');
+    actions.className = 'modal-snapshot-actions';
+    
+    const editBtn = document.createElement('button');
+    editBtn.className = 'small-btn edit';
+    editBtn.textContent = 'Edit';
+    editBtn.onclick = () => editSnapshot(snap.id);
+    
+    const loadBtn = document.createElement('button');
+    loadBtn.className = 'small-btn launch';
+    loadBtn.textContent = 'Load';
+    loadBtn.onclick = () => { loadSnapshot(snap.id); closeSettingsModal(); };
+    
+    const delBtn = document.createElement('button');
+    delBtn.className = 'small-btn close';
+    delBtn.textContent = 'Del';
+    delBtn.onclick = () => deleteSnapshot(snap.id);
+    
+    actions.appendChild(editBtn);
+    actions.appendChild(loadBtn);
+    actions.appendChild(delBtn);
+    
+    item.appendChild(nameSpan);
+    item.appendChild(actions);
+    modalContainer.appendChild(item);
+  });
+}
+
+function formatUrl(url) {
+  url = url ? url.trim() : '';
+  if (!url) return 'https://google.com';
+  if (!/^https?:\/\//i.test(url)) return 'https://' + url;
+  return url;
+}
+
+function editSnapshot(id) {
+  const modalContainer = document.getElementById('modal-snapshots-container');
+  const snap = snapshots.find(s => s.id === id);
+  if (!snap || !modalContainer) return;
+  
+  // Custom rows and cols may not exist in older snapshots, default to layout parsing or 2
+  let sessionCount = 4;
+  if (snap.layout === '1x1') sessionCount = 1;
+  else if (snap.layout === '1x2') sessionCount = 2;
+  else if (snap.layout === '2x2') sessionCount = 4;
+  else if (snap.layout === '3x2') sessionCount = 6;
+  else if (snap.customCols && snap.customRows) sessionCount = snap.customCols * snap.customRows;
+
+  let html = `<div class="snapshot-editor-form">
+    <h3 style="margin-top:0; color: var(--accent-cyan);">${snap.name} 에디터</h3>
+    <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 15px;">Layout: ${snap.layout} (${sessionCount} Sessions)</p>`;
+    
+  for (let i = 1; i <= sessionCount; i++) {
+    const url = snap.urls && snap.urls[i] ? snap.urls[i] : 'https://www.google.com/';
+    html += `
+      <div class="snapshot-editor-row">
+        <label>Session ${i}</label>
+        <input type="text" id="edit-snap-url-${i}" value="${url}" />
+      </div>
+    `;
+  }
+  
+  html += `
+    <div class="snapshot-editor-buttons">
+      <button class="small-btn cancel" onclick="cancelSnapshotEdit()">Cancel</button>
+      <button class="small-btn launch" onclick="saveSnapshotEdits('${snap.id}', ${sessionCount})">Save Changes</button>
+    </div>
+  </div>`;
+  
+  modalContainer.innerHTML = html;
+}
+
+window.cancelSnapshotEdit = function() {
+  renderModalSnapshots();
+};
+
+window.saveSnapshotEdits = function(id, count) {
+  const snap = snapshots.find(s => s.id === id);
+  if (!snap) return;
+  
+  if (!snap.urls) snap.urls = {};
+  for (let i = 1; i <= count; i++) {
+    const input = document.getElementById(`edit-snap-url-${i}`);
+    if (input) {
+      snap.urls[i] = formatUrl(input.value);
+    }
+  }
+  
+  saveSnapshotsToStorage();
+  renderModalSnapshots();
+};
 
 function loadSnapshot(id) {
   const snap = snapshots.find(s => s.id === id);
@@ -2206,6 +2363,7 @@ function saveSettingsFromDOM() {
   globalSettings.humanJitter = humanJitterCheck.checked;
   globalSettings.stealthMode = stealthModeCheck.checked;
   globalSettings.muteAudio = muteAudioCheck.checked;
+  if (privateModeCheck) globalSettings.privateMode = privateModeCheck.checked;
   
   saveGlobalSettings();
   updateSyncVisuals();
@@ -2256,6 +2414,10 @@ modalTabs.forEach(tab => {
     if (target) {
       target.classList.add('active');
       target.style.display = 'block';
+    }
+    
+    if (tab.getAttribute('data-tab') === 'snapshots') {
+      renderModalSnapshots();
     }
   });
 });

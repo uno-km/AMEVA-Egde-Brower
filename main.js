@@ -399,8 +399,10 @@ ipcMain.handle('clear-storage', async (event, partition) => {
 // Advanced network settings via Main process instead of renderer
 ipcMain.handle('setup-session-policy', (event, sessionId, proxyRule) => {
   try {
-    const partitionSession = session.fromPartition(`session-profile-${sessionId}`);
-    partitionSession.setWebRTCIPHandlingPolicy('disable_non_proxied_udp');
+    const partitionSession1 = session.fromPartition(`session-profile-${sessionId}`);
+    partitionSession1.setWebRTCIPHandlingPolicy('disable_non_proxied_udp');
+    const partitionSession2 = session.fromPartition(`persist:session-profile-${sessionId}`);
+    partitionSession2.setWebRTCIPHandlingPolicy('disable_non_proxied_udp');
     // Clear and set proxy logic if needed
     return true;
   } catch (e) {
