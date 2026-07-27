@@ -62,18 +62,31 @@
       <!-- Master Control Address Bar -->
       <div class="address-container">
         <input type="text" id="master-url" placeholder="이동할 URL 입력 후 Enter 또는 Go 클릭 (기본: https://google.com)" value="https://google.com">
+        <button id="btn-add-bookmark" class="icon-btn" title="현재 URL 북마크 추가" style="margin-left: 4px; padding: 4px 8px;">⭐</button>
         <button id="btn-go" class="go-btn" title="모든 활성 브라우저를 입력한 URL로 이동">Go (Sync)</button>
         <button id="btn-reload" class="nav-btn" title="모든 활성 브라우저 새로고침">🔄 Reload All</button>
         <button id="btn-snap-grid" class="nav-btn" title="모든 창을 바둑판 그리드로 복구">📐 Snap to Grid</button>
+        
+        <!-- Snapshots Dropdown -->
+        <div class="snapshot-dropdown-container" style="position: relative; margin-left: 8px;">
+          <button id="btn-snapshot-menu" class="nav-btn" title="스냅샷 관리">📸 Snapshots ▼</button>
+          <div id="snapshot-menu-content" class="snapshot-menu-content collapsed">
+            <div style="padding: 10px; border-bottom: 1px solid var(--border-color);">
+              <input type="text" id="snapshot-name-input" class="card-input" placeholder="스냅숏 이름" style="width: 100%; margin-bottom: 6px; font-size: 0.75rem;">
+              <button id="btn-save-snapshot" class="primary-btn" style="width: 100%; font-size: 0.75rem;">저장 (현재 화면)</button>
+            </div>
+            <div id="snapshots-list" class="snapshots-container" style="max-height: 200px; overflow-y: auto;">
+              <!-- dynamically injected -->
+            </div>
+          </div>
+        </div>
+        
         <button id="btn-fullscreen-toggle" class="nav-btn" title="앱 전체화면 토글">🖥️ Fullscreen</button>
       </div>
 
-      <div class="quick-bookmarks">
-        <span class="bookmark-label">Quick:</span>
-        <button class="bookmark-btn" data-url="https://google.com">Google</button>
-        <button class="bookmark-btn" data-url="https://youtube.com">YouTube</button>
-        <button class="bookmark-btn" data-url="https://naver.com">Naver</button>
-        <button class="bookmark-btn" data-url="https://whoer.net">Whoer (IP Check)</button>
+      <!-- Bookmarks Bar -->
+      <div id="bookmarks-bar" class="bookmarks-bar">
+        <!-- dynamically injected bookmarks -->
       </div>
     </header>
 
@@ -194,18 +207,6 @@
             <button id="btn-launch-grid" class="primary-btn">🚀 Launch Browser Grid</button>
             <button id="btn-realign-grid" class="secondary-btn">🎯 Re-align Grid</button>
             <button id="btn-close-all" class="danger-btn">🛑 Close All Windows</button>
-          </div>
-        </div>
-
-        <!-- Snapshots Card -->
-        <div class="config-card">
-          <h3>Layout Snapshots</h3>
-          <div style="margin-bottom: 8px;">
-            <input type="text" id="snapshot-name-input" class="card-input" placeholder="스냅숏 이름 (예: 코인 4분할)" style="width: 100%;">
-            <button id="btn-save-snapshot" class="primary-btn" style="margin-top: 6px; width: 100%;">저장 (현재 레이아웃 & URL)</button>
-          </div>
-          <div id="snapshots-list" class="snapshots-container">
-            <!-- Snapshots will be dynamically injected here -->
           </div>
         </div>
 

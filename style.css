@@ -1371,3 +1371,86 @@ body.theme-win98 select, body.theme-win98 input {
   color: #000 !important;
 }
 
+
+/* --- Bookmarks Bar --- */
+.bookmarks-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 20px 8px;
+  background: var(--bg-dark);
+  border-bottom: 1px solid var(--border-color);
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.bookmarks-bar::-webkit-scrollbar {
+  height: 4px;
+}
+.bookmarks-bar::-webkit-scrollbar-thumb {
+  background: var(--border-color-active);
+  border-radius: 4px;
+}
+
+.bookmark-item {
+  display: flex;
+  align-items: center;
+  background: var(--bg-control);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  color: var(--text-main);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.bookmark-item:hover {
+  background: var(--bg-control-active);
+  border-color: var(--accent-cyan);
+}
+
+.bookmark-item .bookmark-favicon {
+  width: 14px;
+  height: 14px;
+  margin-right: 6px;
+  border-radius: 2px;
+}
+
+.bookmark-item .btn-remove-bookmark {
+  margin-left: 6px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+.bookmark-item .btn-remove-bookmark:hover {
+  color: var(--danger-color);
+}
+
+/* --- Snapshot Dropdown --- */
+.snapshot-menu-content {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  width: 250px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  z-index: 10001;
+  display: flex;
+  flex-direction: column;
+  transition: opacity 0.2s, transform 0.2s;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.snapshot-menu-content.collapsed {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-10px);
+}

@@ -2028,6 +2028,7 @@ function saveSnapshot() {
   saveSnapshotsToStorage();
   snapshotNameInput.value = '';
   renderSnapshots();
+  renderBookmarks();
 }
 
 function loadSnapshot(id) {
@@ -2186,6 +2187,84 @@ modalTabs.forEach(tab => {
   });
 });
 
+// --- Bookmarks Logic ---
+const btnAddBookmark = document.getElementById('btn-add-bookmark');
+const bookmarksBar = document.getElementById('bookmarks-bar');
+let bookmarks = JSON.parse(localStorage.getItem('ameva_bookmarks')) || [
+  { name: 'Google', url: 'https://google.com' },
+  { name: 'YouTube', url: 'https://youtube.com' },
+  { name: 'Naver', url: 'https://naver.com' },
+  { name: 'Whoer', url: 'https://whoer.net' }
+];
+
+function saveBookmarks() {
+  localStorage.setItem('ameva_bookmarks', JSON.stringify(bookmarks));
+}
+
+function renderBookmarks() {
+  if (!bookmarksBar) return;
+  bookmarksBar.innerHTML = '';
+  bookmarks.forEach((bm, idx) => {
+    const el = document.createElement('div');
+    el.className = 'bookmark-item';
+    el.title = bm.url;
+    
+    let hostname = 'unknown';
+    try { hostname = new URL(bm.url).hostname; } catch(e){}
+    
+    el.innerHTML = `
+      <img src="https://www.google.com/s2/favicons?domain=${hostname}" class="bookmark-favicon" onerror="this.style.display='none'">
+      <span class="bookmark-name">${bm.name}</span>
+      <button class="btn-remove-bookmark" data-idx="${idx}">×</button>
+    `;
+    
+    el.querySelector('.bookmark-name').addEventListener('click', () => {
+      masterUrlInput.value = bm.url;
+      syncUrlToAll(bm.url);
+    });
+    
+    el.querySelector('.btn-remove-bookmark').addEventListener('click', (e) => {
+      e.stopPropagation();
+      bookmarks.splice(idx, 1);
+      saveBookmarks();
+      renderBookmarks();
+    });
+    
+    bookmarksBar.appendChild(el);
+  });
+}
+
+btnAddBookmark?.addEventListener('click', () => {
+  let url = masterUrlInput.value.trim();
+  if (!url) return;
+  if (!url.startsWith('http')) url = 'https://' + url;
+  
+  try {
+    const hostname = new URL(url).hostname.replace('www.', '');
+    bookmarks.push({ name: hostname, url });
+    saveBookmarks();
+    renderBookmarks();
+  } catch (e) {
+    console.error('Invalid URL');
+  }
+});
+
+// --- Snapshot Dropdown Toggle ---
+const btnSnapshotMenu = document.getElementById('btn-snapshot-menu');
+const snapshotMenuContent = document.getElementById('snapshot-menu-content');
+
+btnSnapshotMenu?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  snapshotMenuContent?.classList.toggle('collapsed');
+});
+document.addEventListener('mousedown', (e) => {
+  if (snapshotMenuContent && !snapshotMenuContent.classList.contains('collapsed')) {
+    if (!snapshotMenuContent.contains(e.target) && !btnSnapshotMenu.contains(e.target)) {
+      snapshotMenuContent.classList.add('collapsed');
+    }
+  }
+});
+
 // Listeners Setup
 function initListeners() {
   // Snap to Grid (Free-form Window Reset)
@@ -2337,23 +2416,6 @@ function initListeners() {
   bindSave(muteAudioCheck);
 
   zoomScaleInput?.addEventListener('input', saveSettingsFromDOM);
-
-  // Quick Bookmarks Bindings
-  quickBookmarkButtons.forEach(btn => {
-    btn?.addEventListener('click', () => {
-      const url = btn.dataset.url;
-      masterUrlInput.value = url;
-      
-      const activeCount = globalSettings.executionMode === 'onboard' 
-        ? Object.keys(activeWebviews).length 
-        : Object.keys(spawnedProcesses).length;
-      if (activeCount > 0) {
-        syncNavigateAll();
-      } else {
-        launchGrid();
-      }
-    });
-  });
 
   // Layout Buttons Bindings
   layoutButtons.forEach(btn => {
