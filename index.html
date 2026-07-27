@@ -61,27 +61,31 @@
 
       <!-- Master Control Address Bar -->
       <div class="address-container">
-        <input type="text" id="master-url" placeholder="이동할 URL 입력 후 Enter 또는 Go 클릭 (기본: https://google.com)" value="https://google.com">
-        <button id="btn-add-bookmark" class="icon-btn" title="현재 URL 북마크 추가" style="margin-left: 4px; padding: 4px 8px;">⭐</button>
-        <button id="btn-go" class="go-btn" title="모든 활성 브라우저를 입력한 URL로 이동">Go (Sync)</button>
-        <button id="btn-reload" class="nav-btn" title="모든 활성 브라우저 새로고침">🔄 Reload All</button>
-        <button id="btn-snap-grid" class="nav-btn" title="모든 창을 바둑판 그리드로 복구">📐 Snap to Grid</button>
-        
-        <!-- Snapshots Dropdown -->
-        <div class="snapshot-dropdown-container" style="position: relative; margin-left: 8px;">
-          <button id="btn-snapshot-menu" class="nav-btn" title="스냅샷 관리">📸 Snapshots ▼</button>
+        <!-- Left Navigation -->
+        <button id="btn-reload" class="icon-nav-btn" title="모든 창 새로고침 (Reload All)">🔄</button>
+        <button id="btn-snap-grid" class="icon-nav-btn" title="바둑판 정렬 (Snap to Grid)">📐</button>
+
+        <!-- Center Omnibox -->
+        <div class="omnibox">
+          <input type="text" id="master-url" placeholder="이동할 URL 입력 (예: https://google.com)" value="https://google.com">
+          <button id="btn-add-bookmark" class="omnibox-icon-btn" title="현재 URL 북마크 추가">⭐</button>
+          <button id="btn-go" class="omnibox-icon-btn go-arrow" title="이동 (Sync)">➔</button>
+        </div>
+
+        <!-- Right Controls -->
+        <div class="snapshot-dropdown-container" style="position: relative;">
+          <button id="btn-snapshot-menu" class="icon-nav-btn" title="레이아웃 스냅샷">📸</button>
           <div id="snapshot-menu-content" class="snapshot-menu-content collapsed">
             <div style="padding: 10px; border-bottom: 1px solid var(--border-color);">
               <input type="text" id="snapshot-name-input" class="card-input" placeholder="스냅숏 이름" style="width: 100%; margin-bottom: 6px; font-size: 0.75rem;">
-              <button id="btn-save-snapshot" class="primary-btn" style="width: 100%; font-size: 0.75rem;">저장 (현재 화면)</button>
+              <button id="btn-save-snapshot" class="primary-btn" style="width: 100%; font-size: 0.75rem; padding: 6px;">저장 (현재 화면)</button>
             </div>
             <div id="snapshots-list" class="snapshots-container" style="max-height: 200px; overflow-y: auto;">
               <!-- dynamically injected -->
             </div>
           </div>
         </div>
-        
-        <button id="btn-fullscreen-toggle" class="nav-btn" title="앱 전체화면 토글">🖥️ Fullscreen</button>
+        <button id="btn-fullscreen-toggle" class="icon-nav-btn" title="전체화면">🖥️</button>
       </div>
 
       <!-- Bookmarks Bar -->

@@ -1454,3 +1454,93 @@ body.theme-win98 select, body.theme-win98 input {
   pointer-events: none;
   transform: translateY(-10px);
 }
+
+/* --- Modern Address Bar --- */
+.address-container {
+  display: flex;
+  flex: 1;
+  max-width: 800px;
+  gap: 8px;
+  align-items: center;
+}
+
+.icon-nav-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-main);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  transition: background 0.2s;
+}
+
+.icon-nav-btn:hover {
+  background: var(--bg-control-active);
+}
+
+.omnibox {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  background: var(--bg-control);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  padding: 0 4px 0 16px;
+  height: 36px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.omnibox:focus-within {
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 0 2px rgba(0, 240, 255, 0.2);
+}
+
+.omnibox #master-url {
+  flex: 1;
+  background: transparent;
+  border: none;
+  padding: 0;
+  height: 100%;
+  color: var(--text-main);
+  outline: none;
+}
+
+.omnibox-icon-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.omnibox-icon-btn:hover {
+  background: var(--bg-control-active);
+  color: var(--accent-yellow, #ffd700);
+}
+
+.omnibox-icon-btn.go-arrow {
+  color: var(--text-main);
+  font-size: 1rem;
+  font-weight: bold;
+}
+.omnibox-icon-btn.go-arrow:hover {
+  background: var(--accent-cyan);
+  color: #000;
+}
+
+/* Hide old .nav-btn and .go-btn if any remain */
+.address-container .nav-btn, .address-container .go-btn {
+  display: none !important;
+}
